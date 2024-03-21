@@ -44,3 +44,28 @@ CREATE TABLE @schemaName.codesets (
   codeset_id int NOT NULL,
   concept_id int NOT NULL
 );
+
+
+CREATE TABLE @schemaName.qualified_events  (
+    event_id int NOT NULL,
+    person_id int NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    op_start_date DATE NOT NULL,
+    op_end_date DATE NOT NULL,
+    ordinal BIGINT NOT NULL,
+    visit_occurrence_id int NULL,
+    design_hash int NULL,
+    source_key VARCHAR NULL
+
+);
+CREATE TABLE @schemaName.included_events (
+    event_id int NOT NULL,
+    person_id int NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    op_start_date DATE NOT NULL,
+    op_end_date DATE NOT NULL,
+    design_hash int NULL,
+    source_key VARCHAR NULL
+);
