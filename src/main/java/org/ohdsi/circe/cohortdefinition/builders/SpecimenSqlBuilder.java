@@ -1,6 +1,8 @@
 package org.ohdsi.circe.cohortdefinition.builders;
 
 import org.apache.commons.lang3.StringUtils;
+import org.ohdsi.circe.cohortdefinition.DateAdjustment;
+import org.ohdsi.circe.cohortdefinition.IntervalUnit;
 import org.ohdsi.circe.cohortdefinition.Specimen;
 import org.ohdsi.circe.helper.ResourceHelper;
 
@@ -34,12 +36,14 @@ public class SpecimenSqlBuilder<T extends Specimen> extends CriteriaSqlBuilder<T
   }
 
   @Override
-  protected String getTableColumnForCriteriaColumn(CriteriaColumn column) {
+  protected String getTableColumnForCriteriaColumn(CriteriaColumn column, String timeIntervalUnit) {
     switch (column) {
       case DOMAIN_CONCEPT:
         return "C.specimen_concept_id";
       case DURATION:
         return "CAST(1 as int)";
+      case UNIT:
+        return "C.unit_concept_id";
       default:
         throw new IllegalArgumentException("Invalid CriteriaColumn for Specimen:" + column.toString());
     }
@@ -56,7 +60,7 @@ public class SpecimenSqlBuilder<T extends Specimen> extends CriteriaSqlBuilder<T
   }
 
   @Override
-  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses) {
+  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses, BuilderOptions options) {
 
     // first
     if (criteria.first != null && criteria.first) {
@@ -65,6 +69,10 @@ public class SpecimenSqlBuilder<T extends Specimen> extends CriteriaSqlBuilder<T
     } else {
       query = StringUtils.replace(query, "@ordinalExpression", "");
     }
+    if (options != null && options.isRetainCohortCovariates()) {
+      query = StringUtils.replace(query, "@concept_id", ", C.concept_id");
+    }
+    query = StringUtils.replace(query, "@concept_id", "");
     return query;
   }
 
@@ -135,4 +143,33 @@ public class SpecimenSqlBuilder<T extends Specimen> extends CriteriaSqlBuilder<T
 
     return whereClauses;
   }
+
+  @Override
+  protected List<String> resolveSelectClauses(T criteria, BuilderOptions builderOptions) {
+    // as this logic was fully missing comparing to the other SQL builders adding only the ones which belong to the datetime functionality
+    ArrayList<String> selectCols = new ArrayList<>();
+
+    // unit
+    if (builderOptions != null && builderOptions.isRetainCohortCovariates()) {
+      selectCols.add("s.specimen_concept_id concept_id");
+    }
+
+    // dateAdjustment or default start/end dates
+    if (criteria.dateAdjustment != null) {
+      selectCols.add(BuilderUtils.getDateAdjustmentExpression(criteria.dateAdjustment,
+              criteria.dateAdjustment.startWith == DateAdjustment.DateType.START_DATE ? "s.specimen_date" : "DATEADD(day,1,s.specimen_date)",
+              criteria.dateAdjustment.endWith == DateAdjustment.DateType.START_DATE ? "s.specimen_date" : "DATEADD(day,1,s.specimen_date)"));
+    } else {
+        if ((builderOptions == null || !builderOptions.isUseDatetime()) &&
+            (criteria.intervalUnit == null || IntervalUnit.DAY.getName().equals(criteria.intervalUnit))) {
+          selectCols.add("s.specimen_date as start_date, DATEADD(day,1,s.specimen_date) as end_date");
+      }
+      else {
+        // if any specific business logic is necessary if specimen_datetime is empty it should be added accordingly
+        selectCols.add("s.specimen_datetime as start_date, s.specimen_datetime as end_date");
+      }
+    }
+    return selectCols;
+  }
+
 }

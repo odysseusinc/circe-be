@@ -194,6 +194,7 @@ CREATE TABLE @schemaName.death
     (
      person_id							INTEGER			NOT NULL ,
      death_date							DATE			NOT NULL ,
+     death_datetime							TIMESTAMP			 NULL ,
      death_type_concept_id				INTEGER			NOT NULL ,
      cause_concept_id					INTEGER			NULL ,
      cause_source_value					VARCHAR(50)		NULL,
@@ -243,7 +244,9 @@ CREATE TABLE @schemaName.drug_exposure
      person_id						INTEGER			NOT NULL ,
      drug_concept_id				INTEGER			NOT NULL ,
      drug_exposure_start_date		DATE			NOT NULL ,
+     drug_exposure_start_datetime		TIMESTAMP			NULL ,
      drug_exposure_end_date			DATE			NULL ,
+     drug_exposure_end_datetime			TIMESTAMP			NULL ,
      drug_type_concept_id			INTEGER			NOT NULL ,
      stop_reason					VARCHAR(20)		NULL ,
      refills						INTEGER			NULL ,
@@ -269,14 +272,17 @@ CREATE TABLE @schemaName.device_exposure
      person_id						INTEGER			NOT NULL ,
      device_concept_id				INTEGER			NOT NULL ,
      device_exposure_start_date		DATE			NOT NULL ,
+     device_exposure_start_datetime		TIMESTAMP		 NULL ,
      device_exposure_end_date		DATE			NULL ,
+     device_exposure_end_datetime		TIMESTAMP		 NULL ,
      device_type_concept_id			INTEGER			NOT NULL ,
      unique_device_id      VARCHAR(50)		NULL ,
      quantity						INTEGER			NULL ,
      provider_id					INTEGER			NULL ,
      visit_occurrence_id			INTEGER			NULL ,
      device_source_value			VARCHAR(100)	NULL ,
-	 device_source_concept_id		INTEGER			NULL
+	   device_source_concept_id		INTEGER			NULL,
+     unit_concept_id 		INTEGER			NULL
     )
 ;
 
@@ -286,7 +292,7 @@ CREATE TABLE @schemaName.condition_occurrence
      person_id						INTEGER			NOT NULL ,
      condition_concept_id			INTEGER			NOT NULL ,
      condition_start_date      DATE      NOT NULL ,
-     condition_start_datetime      TIMESTAMP      NOT NULL ,
+     condition_start_datetime      TIMESTAMP      NULL ,
      condition_end_date        DATE      NULL ,
      condition_end_datetime        TIMESTAMP      NULL ,
      condition_type_concept_id		INTEGER			NOT NULL ,
@@ -295,7 +301,8 @@ CREATE TABLE @schemaName.condition_occurrence
      visit_occurrence_id			INTEGER			NULL ,
      condition_source_value			VARCHAR(50)		NULL ,
      condition_source_concept_id	INTEGER			NULL
-    );
+    )
+;
 
 
 CREATE TABLE @schemaName.measurement
@@ -413,16 +420,17 @@ CREATE TABLE @schemaName.provider
     )
 ;
 
-CREATE TABLE @schemaName.payer_plan_period
-    (
-     payer_plan_period_id			INTEGER			NOT NULL ,
+CREATE TABLE @schemaName.payer_plan_period 
+    ( 
+     payer_plan_period_id			INTEGER			NOT NULL , 
      person_id						INTEGER			NOT NULL ,
+     payer_concept_id						INTEGER		  NULL ,
      payer_plan_period_start_date	DATE			NOT NULL ,
-     payer_plan_period_end_date		DATE			NOT NULL ,
-     payer_source_value				VARCHAR (50)	NULL ,
-     plan_source_value				VARCHAR (50)	NULL ,
-     family_source_value			VARCHAR (50)	NULL
-    )
+     payer_plan_period_end_date		DATE			NOT NULL , 
+     payer_source_value				VARCHAR (50)	NULL , 
+     plan_source_value				VARCHAR (50)	NULL , 
+     family_source_value			VARCHAR (50)	NULL 
+    ) 
 ;
 
 
@@ -539,7 +547,9 @@ CREATE TABLE @schemaName.dose_era
 	 unit_concept_id				INTEGER			NOT NULL ,
 	 dose_value						NUMERIC			NOT NULL ,
      dose_era_start_date			DATE			NOT NULL ,
-     dose_era_end_date				DATE			NOT NULL
+     dose_era_start_datetime			TIMESTAMP			 NULL ,
+     dose_era_end_date				DATE			NOT NULL ,
+     dose_era_end_datetime				TIMESTAMP			 NULL
     )
 ;
 

@@ -2,6 +2,7 @@ package org.ohdsi.circe.cohortdefinition.builders;
 
 import org.apache.commons.lang3.StringUtils;
 import org.ohdsi.circe.cohortdefinition.DrugExposure;
+import org.ohdsi.circe.cohortdefinition.IntervalUnit;
 import org.ohdsi.circe.helper.ResourceHelper;
 
 import java.util.ArrayList;
@@ -9,6 +10,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
 import org.ohdsi.circe.cohortdefinition.DateAdjustment;
 
 import static org.ohdsi.circe.cohortdefinition.builders.BuilderUtils.buildDateRangeClause;
@@ -25,8 +27,8 @@ public class DrugExposureSqlBuilder<T extends DrugExposure> extends CriteriaSqlB
   private final Set<CriteriaColumn> DEFAULT_COLUMNS = new HashSet<>(Arrays.asList(CriteriaColumn.START_DATE, CriteriaColumn.END_DATE, CriteriaColumn.VISIT_ID));
 
   // default select columns are the columns that will always be returned from the subquery, but are added to based on the specific criteria
-  private final List<String> DEFAULT_SELECT_COLUMNS = new ArrayList<>(Arrays.asList("de.person_id", "de.drug_exposure_id", "de.drug_concept_id", "de.visit_occurrence_id", 
-          "days_supply", "quantity", "refills"));
+  private final List<String> DEFAULT_SELECT_COLUMNS = new ArrayList<>(Arrays.asList("de.person_id", "de.drug_exposure_id", "de.drug_concept_id", "de.visit_occurrence_id",
+    "days_supply", "quantity", "refills"));
 
   @Override
   protected Set<CriteriaColumn> getDefaultColumns() {
@@ -40,14 +42,14 @@ public class DrugExposureSqlBuilder<T extends DrugExposure> extends CriteriaSqlB
   }
 
   @Override
-  protected String getTableColumnForCriteriaColumn(CriteriaColumn column) {
+  protected String getTableColumnForCriteriaColumn(CriteriaColumn column, String timeIntervalUnit) {
     switch (column) {
       case DAYS_SUPPLY:
         return "C.days_supply";
       case DOMAIN_CONCEPT:
         return "C.drug_concept_id";
       case DURATION:
-        return "DATEDIFF(d, C.start_date, C.end_date)";
+        return String.format("DATEDIFF(%s,c.start_date, c.end_date)", StringUtils.isEmpty(timeIntervalUnit) ? "d" : timeIntervalUnit);
       case QUANTITY:
         return "C.quantity";
       case REFILLS:
@@ -69,7 +71,7 @@ public class DrugExposureSqlBuilder<T extends DrugExposure> extends CriteriaSqlB
   }
 
   @Override
-  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses) {
+  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses, BuilderOptions options) {
 
     // first
     if (criteria.first != null && criteria.first) {
@@ -79,11 +81,16 @@ public class DrugExposureSqlBuilder<T extends DrugExposure> extends CriteriaSqlB
       query = StringUtils.replace(query, "@ordinalExpression", "");
     }
 
+    if (options != null && options.isRetainCohortCovariates()) {
+      query = StringUtils.replace(query, "@concept_id", ", C.concept_id");
+    }
+    query = StringUtils.replace(query, "@concept_id", "");
+
     return query;
   }
 
   @Override
-  protected List<String> resolveSelectClauses(T criteria) {
+  protected List<String> resolveSelectClauses(T criteria, BuilderOptions builderOptions) {
 
     ArrayList<String> selectCols = new ArrayList<>(DEFAULT_SELECT_COLUMNS);
 
@@ -130,7 +137,18 @@ public class DrugExposureSqlBuilder<T extends DrugExposure> extends CriteriaSqlB
               criteria.dateAdjustment.endWith == DateAdjustment.DateType.START_DATE ? "de.drug_exposure_start_date" : 
                       "COALESCE(de.drug_exposure_end_date, DATEADD(day,de.days_supply,de.drug_exposure_start_date), DATEADD(day,1,de.drug_exposure_start_date))"));
     } else {
-      selectCols.add("de.drug_exposure_start_date as start_date, COALESCE(de.drug_exposure_end_date, DATEADD(day,de.days_supply,de.drug_exposure_start_date), DATEADD(day,1,de.drug_exposure_start_date)) as end_date");
+        if ((builderOptions == null || !builderOptions.isUseDatetime()) &&
+            (criteria.intervalUnit == null || IntervalUnit.DAY.getName().equals(criteria.intervalUnit))) {
+          selectCols.add("de.drug_exposure_start_date as start_date, COALESCE(de.drug_exposure_end_date, DATEADD(day,de.days_supply,de.drug_exposure_start_date), DATEADD(day,1,de.drug_exposure_start_date)) as end_date");
+      }
+      else {
+        // if any specific business logic is necessary if drug_exposure_end_datetime is empty it should be added accordingly as for the 'day' case
+        selectCols.add("de.drug_exposure_start_datetime as start_date, de.drug_exposure_end_datetime as end_date");
+      }
+    }
+    // If save covariates is included, add the concept_id column
+    if (builderOptions != null && builderOptions.isRetainCohortCovariates()) {
+      selectCols.add("de.drug_concept_id concept_id");
     }
     return selectCols;
   }

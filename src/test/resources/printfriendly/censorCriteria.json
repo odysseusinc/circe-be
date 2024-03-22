@@ -324,13 +324,11 @@
         },
         "StartWindow": {
           "Start": {
-            "TimeUnitValue": 365,
-            "TimeUnit": "day",
+            "Days": 365,
             "Coeff": -1
           },
           "End": {
-            "TimeUnitValue": 60,
-                "TimeUnit": "day",
+            "Days": 60,
             "Coeff": 1
           },
           "UseEventEnd": false
@@ -358,8 +356,7 @@
   ],
   "CollapseSettings": {
     "CollapseType": "ERA",
-    "EraPadUnit": "day",
-    "EraPadUnitValue": 0
+    "EraPad": 0
   },
   "CensorWindow": {},
   "cdmVersionRange": ">=5.0.0"

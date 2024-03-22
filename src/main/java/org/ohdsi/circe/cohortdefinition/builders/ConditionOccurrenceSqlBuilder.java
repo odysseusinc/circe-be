@@ -2,6 +2,7 @@ package org.ohdsi.circe.cohortdefinition.builders;
 
 import org.apache.commons.lang3.StringUtils;
 import org.ohdsi.circe.cohortdefinition.ConditionOccurrence;
+import org.ohdsi.circe.cohortdefinition.IntervalUnit;
 import org.ohdsi.circe.helper.ResourceHelper;
 
 import java.util.ArrayList;
@@ -39,13 +40,19 @@ public class ConditionOccurrenceSqlBuilder<T extends ConditionOccurrence> extend
     return CONDITION_OCCURRENCE_TEMPLATE;
   }
 
+  /**
+   * Add params timeIntervalUnit to check for hours/minutes/seconds situation
+   * @param column
+   * @param timeIntervalUnit
+   * @return
+   */
   @Override
-  protected String getTableColumnForCriteriaColumn(CriteriaColumn column) {
+  protected String getTableColumnForCriteriaColumn(CriteriaColumn column, String timeIntervalUnit) {
     switch (column) {
       case DOMAIN_CONCEPT:
         return "C.condition_concept_id";
       case DURATION:
-        return "(DATEDIFF(d,C.start_date, C.end_date))";
+        return String.format("DATEDIFF(%s,c.start_date, c.end_date)", StringUtils.isEmpty(timeIntervalUnit) ? "d" : timeIntervalUnit);
       default:
         throw new IllegalArgumentException("Invalid CriteriaColumn for Condition Occurrence:" + column.toString());
     }
@@ -64,21 +71,26 @@ public class ConditionOccurrenceSqlBuilder<T extends ConditionOccurrence> extend
   }
 
   @Override
-  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses) {
+  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses, BuilderOptions options) {
 
     // first
     if (criteria.first != null && criteria.first == true) {
       whereClauses.add("C.ordinal = 1");
-      query = StringUtils.replace(query, "@ordinalExpression", ", row_number() over (PARTITION BY co.person_id ORDER BY co.condition_start_datetime, co.condition_occurrence_id) as ordinal");
+      query = StringUtils.replace(query, "@ordinalExpression", ", row_number() over (PARTITION BY co.person_id ORDER BY co.condition_start_date, co.condition_occurrence_id) as ordinal");
     } else {
       query = StringUtils.replace(query, "@ordinalExpression", "");
     }
+    // If save covariates is included, add the concept_id column
+    if (options != null && options.isRetainCohortCovariates()) {
+      query = StringUtils.replace(query, "@concept_id", ", C.concept_id");
+    }
+    query = StringUtils.replace(query, "@concept_id", "");
 
     return query;
   }
 
   @Override
-  protected List<String> resolveSelectClauses(T criteria) {
+  protected List<String> resolveSelectClauses(T criteria, BuilderOptions builderOptions) {
     ArrayList<String> selectCols = new ArrayList<>(DEFAULT_SELECT_COLUMNS);
     // Condition Type
     if (criteria.conditionType != null && criteria.conditionType.length > 0) {
@@ -98,11 +110,22 @@ public class ConditionOccurrenceSqlBuilder<T extends ConditionOccurrence> extend
     }
     // dateAdjustment or default start/end dates
     if (criteria.dateAdjustment != null) {
-      selectCols.add(BuilderUtils.getDateAdjustmentExpression(criteria.dateAdjustment,
-              criteria.dateAdjustment.startWith == DateAdjustment.DateType.START_DATE ? "co.condition_start_datetime" : "COALESCE(co.condition_end_datetime, DATEADD(day,1,co.condition_start_datetime))",
-              criteria.dateAdjustment.endWith == DateAdjustment.DateType.START_DATE ? "co.condition_start_datetime" : "COALESCE(co.condition_end_datetime, DATEADD(day,1,co.condition_start_datetime))"));
+        selectCols.add(BuilderUtils.getDateAdjustmentExpression(criteria.dateAdjustment,
+            criteria.dateAdjustment.startWith == DateAdjustment.DateType.START_DATE ? "co.condition_start_date" : "COALESCE(co.condition_end_date, DATEADD(day,1,co.condition_start_date))",
+            criteria.dateAdjustment.endWith == DateAdjustment.DateType.START_DATE ? "co.condition_start_date" : "COALESCE(co.condition_end_date, DATEADD(day,1,co.condition_start_date))"));
     } else {
-      selectCols.add("co.condition_start_datetime as start_date, COALESCE(co.condition_end_datetime, DATEADD(day,1,co.condition_start_datetime)) as end_date");
+        if ((builderOptions == null || !builderOptions.isUseDatetime()) &&
+            (criteria.intervalUnit == null || IntervalUnit.DAY.getName().equals(criteria.intervalUnit))) {
+          selectCols.add("co.condition_start_date as start_date, COALESCE(co.condition_end_date, DATEADD(day,1,co.condition_start_date)) as end_date");
+      }
+      else {
+        // if any specific business logic is necessary if condition_end_datetime is empty it should be added accordingly as for the 'day' case
+        selectCols.add("co.condition_start_datetime as start_date, co.condition_end_datetime as end_date");
+      }
+    }
+    // If save covariates is included, add the concept_id column
+    if (builderOptions != null && builderOptions.isRetainCohortCovariates()) {
+      selectCols.add("co.condition_concept_id concept_id");
     }
     return selectCols;
   }

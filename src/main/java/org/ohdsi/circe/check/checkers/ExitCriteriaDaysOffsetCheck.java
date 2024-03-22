@@ -40,9 +40,9 @@ public class ExitCriteriaDaysOffsetCheck extends BaseCheck {
     protected void check(CohortExpression expression, WarningReporter reporter) {
 
         match(expression.endStrategy)
-                .isA(DateOffsetStrategy.class)
-                .then(s -> match((DateOffsetStrategy)s)
-                        .when(dateOffsetStrategy -> Objects.equals(StartDate, dateOffsetStrategy.dateField) && 0 == dateOffsetStrategy.offsetUnitValue)
-                        .then(dateOffsetStrategy -> reporter.add(String.format(DAYS_OFFSET_WARNING, dateOffsetStrategy.offsetUnit))));
+            .isA(DateOffsetStrategy.class)
+            .then(s -> match((DateOffsetStrategy)s)
+                .when(dateOffsetStrategy -> Objects.equals(StartDate, dateOffsetStrategy.dateField) &&  0 == dateOffsetStrategy.offsetUnitValue)
+                .then(dateOffsetStrategy -> reporter.add(String.format(DAYS_OFFSET_WARNING, dateOffsetStrategy.offsetUnit))));
     }
 }

@@ -54,8 +54,7 @@
             "Coeff": -1
           },
           "End": {
-            "TimeUnitValue": 1,
-                "TimeUnit": "day",
+            "Days": 1,
             "Coeff": -1
           },
           "UseEventEnd": false
@@ -79,15 +78,13 @@
   "EndStrategy": {
     "DateOffset": {
       "DateField": "StartDate",
-      "OffsetUnit": "day",
-      "OffsetUnitValue": 1
+      "Offset": 1
     }
   },
   "CensoringCriteria": [],
   "CollapseSettings": {
     "CollapseType": "ERA",
-    "EraPadUnit": "day",
-    "EraPadUnitValue": 60
+    "EraPad": 60
   },
   "CensorWindow": {}
 }

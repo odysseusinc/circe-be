@@ -2,10 +2,12 @@ package org.ohdsi.circe.cohortdefinition.builders;
 
 import org.apache.commons.lang3.StringUtils;
 import org.ohdsi.circe.cohortdefinition.ConceptSetSelection;
+import org.ohdsi.circe.cohortdefinition.IntervalUnit;
 import org.ohdsi.circe.cohortdefinition.VisitDetail;
 import org.ohdsi.circe.helper.ResourceHelper;
 
 import java.util.*;
+
 import org.ohdsi.circe.cohortdefinition.DateAdjustment;
 
 public class VisitDetailSqlBuilder<T extends VisitDetail> extends CriteriaSqlBuilder<T> {
@@ -16,8 +18,8 @@ public class VisitDetailSqlBuilder<T extends VisitDetail> extends CriteriaSqlBui
   private final Set<CriteriaColumn> DEFAULT_COLUMNS = new HashSet<>(Arrays.asList(CriteriaColumn.START_DATE, CriteriaColumn.END_DATE, CriteriaColumn.VISIT_DETAIL_ID));
 
   // default select columns are the columns that will always be returned from the subquery, but are added to based on the specific criteria
-  private final List<String> DEFAULT_SELECT_COLUMNS = new ArrayList<>(Arrays.asList("vd.person_id", "vd.visit_detail_id", 
-          "vd.visit_detail_concept_id","vd.visit_occurrence_id"));
+  private final List<String> DEFAULT_SELECT_COLUMNS = new ArrayList<>(Arrays.asList("vd.person_id", "vd.visit_detail_id",
+    "vd.visit_detail_concept_id", "vd.visit_occurrence_id"));
 
   @Override
   protected Set<CriteriaColumn> getDefaultColumns() {
@@ -30,12 +32,12 @@ public class VisitDetailSqlBuilder<T extends VisitDetail> extends CriteriaSqlBui
   }
 
   @Override
-  protected String getTableColumnForCriteriaColumn(CriteriaColumn column) {
+  protected String getTableColumnForCriteriaColumn(CriteriaColumn column, String timeIntervalUnit) {
     switch (column) {
       case DOMAIN_CONCEPT:
         return "C.visit_detail_concept_id";
       case DURATION:
-        return "DATEDIFF(d, C.start_date, C.end_date)";
+        return String.format("DATEDIFF(%s,c.start_date, c.end_date)", StringUtils.isEmpty(timeIntervalUnit) ? "d" : timeIntervalUnit);
       default:
         throw new IllegalArgumentException("Invalid CriteriaColumn for Visit Detail:" + column.toString());
     }
@@ -53,7 +55,7 @@ public class VisitDetailSqlBuilder<T extends VisitDetail> extends CriteriaSqlBui
   }
 
   @Override
-  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses) {
+  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses, BuilderOptions options) {
     // first
     if (criteria.first != null && criteria.first == true) {
       whereClauses.add("C.ordinal = 1");
@@ -61,11 +63,15 @@ public class VisitDetailSqlBuilder<T extends VisitDetail> extends CriteriaSqlBui
     } else {
       query = StringUtils.replace(query, "@ordinalExpression", "");
     }
+    if (options != null && options.isRetainCohortCovariates()) {
+      query = StringUtils.replace(query, "@concept_id", ", C.concept_id");
+    }
+    query = StringUtils.replace(query, "@concept_id", "");
     return query;
   }
 
   @Override
-  protected List<String> resolveSelectClauses(T criteria) {
+  protected List<String> resolveSelectClauses(T criteria, BuilderOptions builderOptions) {
 
     ArrayList<String> selectCols = new ArrayList<>(DEFAULT_SELECT_COLUMNS);
 
@@ -90,9 +96,19 @@ public class VisitDetailSqlBuilder<T extends VisitDetail> extends CriteriaSqlBui
               criteria.dateAdjustment.startWith == DateAdjustment.DateType.START_DATE ? "vd.visit_detail_start_date" : "vd.visit_detail_end_date",
               criteria.dateAdjustment.endWith == DateAdjustment.DateType.START_DATE ? "vd.visit_detail_start_date" : "vd.visit_detail_end_date"));
     } else {
-      selectCols.add("vd.visit_detail_start_date as start_date, vd.visit_detail_end_date as end_date");
+        if ((builderOptions == null || !builderOptions.isUseDatetime()) &&
+            (criteria.intervalUnit == null || IntervalUnit.DAY.getName().equals(criteria.intervalUnit))) {
+          selectCols.add("vd.visit_detail_start_date as start_date, vd.visit_detail_end_date as end_date");
+      }
+      else {
+        // if any specific business logic is necessary if visit_detail_end_datetime is empty it should be added accordingly
+        selectCols.add("vd.visit_detail_start_datetime as start_date, vd.visit_detail_end_datetime as end_date");
+      }
     }
-
+    // If save covariates is included, add the concept_id column
+    if (builderOptions != null && builderOptions.isRetainCohortCovariates()) {
+      selectCols.add("vd.visit_detail_concept_id concept_id");
+    }
     return selectCols;
   }
 

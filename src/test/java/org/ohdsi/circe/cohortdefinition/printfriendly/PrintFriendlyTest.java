@@ -455,6 +455,36 @@ public class PrintFriendlyTest {
     ));
     
   }
+  @Test
+  public void customEraExitTestHour() {
+    CohortExpression expression = CohortExpression.fromJson(ResourceHelper.GetResourceAsString("/printfriendly/customEraExitHour.json"));
+    String markdown = pf.renderCohort(expression);
+    assertThat(markdown, stringContainsInOrder(
+            "The cohort end date will be based on a continuous exposure to 'Concept Set 1':",
+            "allowing 336 hour between exposures, adding 24 hours after exposure ends, and forcing drug exposure hour supply to: 168 hours."
+    ));
+
+  }
+    @Test
+    public void customEraExitTestMinute() {
+        CohortExpression expression = CohortExpression.fromJson(ResourceHelper.GetResourceAsString("/printfriendly/customEraExitMinute.json"));
+        String markdown = pf.renderCohort(expression);
+        assertThat(markdown, stringContainsInOrder(
+            "The cohort end date will be based on a continuous exposure to 'Concept Set 1':",
+            "allowing 20,160 minute between exposures, adding 1,440 minutes after exposure ends, and forcing drug exposure minute supply to: 10,080 minutes."
+        ));
+
+    }
+    @Test
+    public void customEraExitTestSecond() {
+        CohortExpression expression = CohortExpression.fromJson(ResourceHelper.GetResourceAsString("/printfriendly/customEraExitSecond.json"));
+        String markdown = pf.renderCohort(expression);
+        assertThat(markdown, stringContainsInOrder(
+            "The cohort end date will be based on a continuous exposure to 'Concept Set 1':",
+            "allowing 1,209,600 second between exposures, adding 86,400 seconds after exposure ends, and forcing drug exposure second supply to: 604,800 seconds."
+        ));
+
+    }
   
   @Test
   public void conceptSetSimpleTest() {
@@ -639,6 +669,37 @@ public class PrintFriendlyTest {
   public void nullConceptSetListTest() {
     exceptionRule.expect(RuntimeException.class);
     pf.renderConceptSetList((ConceptSet[])null);
+    
+  }
+  
+  @Test
+  public void dateAdjustTest() {
+    CohortExpression expression = CohortExpression.fromJson(ResourceHelper.GetResourceAsString("/printfriendly/dateAdjust.json"));
+    String markdown = pf.renderCohort(expression);
+    assertThat(markdown, stringContainsInOrder(
+            "1. condition eras of 'Concept Set 1', starting 10 days after and ending 20 days after the event start date.",
+            "2. condition occurrences of 'Concept Set 1', starting 30 days after and ending 40 days after the event end date.",
+            "3. dose eras of 'Concept Set 1', starting 10 days after and ending 20 days after the event start date.",
+            "4. drug eras of 'Concept Set 1', starting 10 days after and ending 20 days after the event start date.",
+            "6. device exposures of 'Concept Set 1', starting on the event start date and ending 20 days after the event end date.",
+            "7. measurements of 'Concept Set 1', starting on and ending 20 days after the event end date.",
+            "8. observations of 'Concept Set 1', starting 10 days after and ending 20 days after the event start date.",
+            "9. observation periods, starting 10 days after and ending 20 days after the event start date.",
+            "10. procedure occurrences of 'Concept Set 1', starting 10 days after and ending 20 days after the event start date.",
+            "11. specimens of 'Concept Set 1', starting 10 days after and ending 20 days after the event start date.",
+            "12. visit occurrences of 'Concept Set 1', starting 10 days after and ending 20 days after the event start date.",
+            "13. visit details of 'Concept Set 1', starting 10 days after and ending 20 days after the event start date."
+    ));
+    
+  }
+  
+  @Test
+  public void emptyConceptListTest() {
+    CohortExpression expression = CohortExpression.fromJson(ResourceHelper.GetResourceAsString("/printfriendly/emptyConceptList.json"));
+    String markdown = pf.renderCohort(expression);
+    assertThat(markdown, stringContainsInOrder(
+            "1. condition occurrences of 'Concept Set 1', a provider specialty that is: [none specified]; a visit occurrence that is: [none specified]."
+    ));
     
   }
 }

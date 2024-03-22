@@ -30,7 +30,7 @@
         "ConditionOccurrence": {
           "CodesetId": 0
         }
-      }      
+      }
     ],
     "ObservationWindow": {
       "PriorDays": 0,
@@ -54,8 +54,7 @@
             "Coeff": -1
           },
           "End": {
-            "TimeUnitValue": 1,
-                "TimeUnit": "day",
+            "Days": 1,
             "Coeff": -1
           },
           "UseEventEnd": false
@@ -79,8 +78,7 @@
   "CensoringCriteria": [],
   "CollapseSettings": {
     "CollapseType": "ERA",
-    "EraPadUnit": "day",
-    "EraPadUnitValue": 0
+    "EraPad": 0
   },
   "CensorWindow": {}
 }
