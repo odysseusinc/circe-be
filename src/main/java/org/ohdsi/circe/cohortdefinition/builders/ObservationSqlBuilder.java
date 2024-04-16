@@ -19,7 +19,6 @@ import static org.ohdsi.circe.cohortdefinition.builders.BuilderUtils.buildNumeri
 import static org.ohdsi.circe.cohortdefinition.builders.BuilderUtils.buildTextFilterClause;
 import static org.ohdsi.circe.cohortdefinition.builders.BuilderUtils.getCodesetJoinExpression;
 import static org.ohdsi.circe.cohortdefinition.builders.BuilderUtils.getConceptIdsFromConcepts;
-import static org.ohdsi.circe.cohortdefinition.CohortExpressionQueryBuilder.checkColumnTable;
 public class ObservationSqlBuilder<T extends Observation> extends CriteriaSqlBuilder<T> {
 
   private final static String OBSERVATION_TEMPLATE = ResourceHelper.GetResourceAsString("/resources/cohortdefinition/sql/observation.sql");
@@ -84,53 +83,45 @@ public class ObservationSqlBuilder<T extends Observation> extends CriteriaSqlBui
       query = StringUtils.replace(query, "@ordinalExpression", "");
     }
     if (options != null && options.isRetainCohortCovariates()) {
-      query = StringUtils.replace(query, "@concept_id", ", C.concept_id");
+        List<String> cColumns = new ArrayList<>();
+        cColumns.add("C.concept_id");
+        cColumns.add("C.value_as_number");
+        
       // measurementType
       if (criteria.observationType != null && criteria.observationType.length > 0) {
-        query = StringUtils.replace(query, "@c_observation_type_concept_id", ", C.observation_type_concept_id");
+          cColumns.add("C.observation_type_concept_id");
       }
-
-      // valueAsNumber
-//      if (criteria.valueAsNumber != null) {
-      query = StringUtils.replace(query, "@c_value_as_number", ", C.value_as_number");
-//      }
-
 
       // valueAsString
       if (criteria.valueAsString != null) {
-        query = StringUtils.replace(query, "@c_value_as_string", ", C.value_as_string");
+          cColumns.add("C.value_as_string");
       }
 
       // valueAsConcept
       if (criteria.valueAsConcept != null && criteria.valueAsConcept.length > 0) {
-        query = StringUtils.replace(query, "@c_value_as_concept_id", ", C.value_as_concept_id");
+          cColumns.add("C.value_as_concept_id");
       }
 
       // qualifier
       if (criteria.qualifier != null && criteria.qualifier.length > 0) {
-        query = StringUtils.replace(query, "@c_qualifier_concept_id", ", C.qualifier_concept_id");
+          cColumns.add("C.qualifier_concept_id");
       }
 
       // unit
       if (criteria.unit != null && criteria.unit.length > 0) {
-        query = StringUtils.replace(query, "@c_unit_concept_id", ", C.unit_concept_id");
+          cColumns.add("C.unit_concept_id");
       }
 
       // providerSpecialty
       if (criteria.providerSpecialty != null && criteria.providerSpecialty.length > 0) {
-        query = StringUtils.replace(query, "@c_provider_id", ", C.provider_id");
+          cColumns.add("C.provider_id");
       }
-
+      
+      query = StringUtils.replace(query, "@c.additionalColumns", ", " + StringUtils.join(cColumns, ","));
+      
+    } else {
+        query = StringUtils.replace(query, "@c.additionalColumns", "");
     }
-    query = StringUtils.replace(query, "@concept_id", "");
-    query = StringUtils.replace(query, "@c_observation_type_concept_id", "");
-    query = StringUtils.replace(query, "@c_value_as_number", "");
-    query = StringUtils.replace(query, "@c_value_as_string", "");
-    query = StringUtils.replace(query, "@c_value_as_concept_id", "");
-    query = StringUtils.replace(query, "@c_qualifier_concept_id", "");
-    query = StringUtils.replace(query, "@c_unit_concept_id", "");
-    query = StringUtils.replace(query, "@c_provider_id", "");
-
     return query;
   }
 
@@ -277,175 +268,4 @@ public class ObservationSqlBuilder<T extends Observation> extends CriteriaSqlBui
     return whereClauses;
   }
 
-  public String embedWindowedCriteriaQuery(String query, Criteria criteria, BuilderOptions options) {
-    ArrayList<String> selectCols = new ArrayList<>();
-    ArrayList<String> selectGroupCols = new ArrayList<>();
-    selectCols.add(", cc.value_as_number");
-    selectGroupCols.add(", cc.value_as_number");
-    if (checkColumnTable(criteria, "valueAsString") && !selectCols.contains(", cc.value_as_string")) {
-      selectCols.add(", cc.value_as_string");
-      selectGroupCols.add(", cc.value_as_string");
-    } else {
-      selectCols.add(", null as value_as_string");
-    }
-    if (checkColumnTable(criteria, "valueAsConceptId")
-      && !selectCols.contains(", cc.value_as_concept_id")) {
-      selectCols.add(", cc.value_as_concept_id");
-      selectGroupCols.add(", cc.value_as_concept_id");
-    } else {
-      selectCols.add(", CAST(null as int) value_as_concept_id");
-    }
-    if (checkColumnTable(criteria, "unit") && !selectCols.contains(", cc.unit_concept_id")) {
-      selectCols.add(", cc.unit_concept_id");
-      selectGroupCols.add(", cc.unit_concept_id");
-    } else {
-      selectCols.add(", CAST(null as int) unit_concept_id");
-    }
-    if (checkColumnTable(criteria, "providerSpecialty") && !selectCols.contains(", cc.provider_id")) {
-      selectCols.add(", cc.provider_id");
-      selectGroupCols.add(", cc.provider_id");
-    } else {
-      selectCols.add(", CAST(null as int) provider_id");
-    }
-    if (checkColumnTable(criteria, "qualifier") && !selectCols.contains(", cc.qualifier_concept_id")) {
-      selectCols.add(", cc.qualifier_concept_id");
-      selectGroupCols.add(", cc.qualifier_concept_id");
-    } else {
-      selectCols.add(", CAST(null as int) qualifier_concept_id");
-    }
-    if (checkColumnTable(criteria, "observationType")
-      && !selectCols.contains(", cc.observation_type_concept_id")) {
-      selectCols.add(", cc.observation_type_concept_id");
-      selectGroupCols.add(", cc.observation_type_concept_id");
-    } else {
-      selectCols.add(", CAST(null as int) observation_type_concept_id");
-    }
-    if (checkColumnTable(criteria, "rangeLow") && !selectCols.contains(", cc.range_low")) {
-      selectCols.add(", cc.range_low");
-      selectGroupCols.add(", cc.range_low");
-    } else {
-      selectCols.add(", CAST(null as numeric) range_low");
-    }
-    if (checkColumnTable(criteria, "rangeHigh") && !selectCols.contains(", cc.range_high")) {
-      selectCols.add(", cc.range_high");
-      selectGroupCols.add(", cc.range_high");
-    } else {
-      selectCols.add(", CAST(null as numeric) range_high");
-    }
-    query = StringUtils.replace(query, "@additionColumnscc", StringUtils.join(selectCols, ""));
-    query = StringUtils.replace(query, "@additionColumnGroupscc", StringUtils.join(selectGroupCols, ""));
-    return query;
-  }
-  public String embedWindowedCriteriaQueryP(String query, Criteria criteria, BuilderOptions options) {
-    ArrayList<String> selectColsA = new ArrayList<>();
-    selectColsA.add(", A.value_as_number");
-    if (checkColumnTable(criteria, "valueAsString") && !selectColsA.contains(", A.value_as_string")) {
-      selectColsA.add(", A.value_as_string");
-    } else {
-      selectColsA.add(", null as value_as_string");
-    }
-    if (checkColumnTable(criteria, "valueAsConceptId") && !selectColsA.contains(", A.value_as_concept_id")) {
-      selectColsA.add(", A.value_as_concept_id");
-    } else {
-      selectColsA.add(", CAST(null as int) value_as_concept_id");
-    }
-    if (checkColumnTable(criteria, "unit") && !selectColsA.contains(", A.unit_concept_id")) {
-      selectColsA.add(", A.unit_concept_id");
-    } else {
-      selectColsA.add(", CAST(null as int)  unit_concept_id");
-    }
-    if (checkColumnTable(criteria, "providerSpecialty") && !selectColsA.contains(", A.provider_id")) {
-      selectColsA.add(", A.provider_id");
-    } else {
-      selectColsA.add(", CAST(null as int)  provider_id");
-    }
-    if (checkColumnTable(criteria, "qualifier") && !selectColsA.contains(", A.qualifier_concept_id")) {
-      selectColsA.add(", A.qualifier_concept_id");
-    } else {
-      selectColsA.add(", CAST(null as int) qualifier_concept_id");
-    }
-    if (checkColumnTable(criteria, "observationType") && !selectColsA.contains(", A.observation_type_concept_id")) {
-      selectColsA.add(", A.observation_type_concept_id");
-    } else {
-      selectColsA.add(", CAST(null as int) observation_type_concept_id");
-    }
-    if (checkColumnTable(criteria, "rangeLow") && !selectColsA.contains(", A.range_low")) {
-      selectColsA.add(", A.range_low");
-    } else {
-      selectColsA.add(", CAST(null as numeric) range_low");
-    }
-    if (checkColumnTable(criteria, "rangeHigh") && !selectColsA.contains(", A.range_high")) {
-      selectColsA.add(", A.range_high");
-    } else {
-      selectColsA.add(", CAST(null as numeric) range_high");
-    }
-    query = StringUtils.replace(query, "@p.additionColumns", StringUtils.join(selectColsA, ""));
-    return query;
-  }
-  public String embedCriteriaGroup(String query, Criteria criteria) {
-    ArrayList<String> selectColsCQ = new ArrayList<>();
-    ArrayList<String> selectColsG = new ArrayList<>();
-    selectColsCQ.add(", CQ.value_as_number");
-    selectColsG.add(", G.value_as_number");
-    selectColsCQ.add(", CQ.value_as_string");
-    selectColsG.add(", G.value_as_string");
-    selectColsCQ.add(", CQ.value_as_concept_id");
-    selectColsG.add(", G.value_as_concept_id");
-    selectColsCQ.add(", CQ.unit_concept_id");
-    selectColsG.add(", G.unit_concept_id");
-    selectColsCQ.add(", CQ.provider_id");
-    selectColsG.add(", G.provider_id");
-    selectColsCQ.add(", CQ.qualifier_concept_id");
-    selectColsG.add(", G.qualifier_concept_id");
-    selectColsCQ.add(", CQ.observation_type_concept_id");
-    selectColsG.add(", G.observation_type_concept_id");
-    selectColsCQ.add(", CQ.range_low");
-    selectColsG.add(", G.range_low");
-    selectColsCQ.add(", CQ.range_high");
-    selectColsG.add(", G.range_high");
-    query = StringUtils.replace(query, "@e.additonColumns", StringUtils.join(selectColsCQ, ""));
-    query = StringUtils.replace(query, "@additonColumnsGroup", StringUtils.join(selectColsG, ""));
-    return query;
-  }
-  public String embedWrapCriteriaQuery(String query, Criteria criteria, List<String> selectColsPE) {
-    ArrayList<String> selectCols = new ArrayList<>();
-    if (checkColumnTable(criteria, "valueAsNumber")) {
-      selectCols.add(", Q.value_as_number");
-      selectColsPE.add(", AC.value_as_number");
-    }
-    if (checkColumnTable(criteria, "valueAsString") && !selectCols.contains(", Q.value_as_string")) {
-      selectCols.add(", Q.value_as_string");
-      selectColsPE.add(", AC.value_as_string");
-    }
-    if (checkColumnTable(criteria, "valueAsConceptId") && !selectCols.contains(", Q.value_as_concept_id")) {
-      selectCols.add(", Q.value_as_concept_id");
-      selectColsPE.add(", AC.value_as_concept_id");
-    }
-    if (checkColumnTable(criteria, "unit") && !selectCols.contains(", Q.unit_concept_id")) {
-      selectCols.add(", Q.unit_concept_id");
-      selectColsPE.add(", AC.unit_concept_id");
-    }
-    if (checkColumnTable(criteria, "providerSpecialty") && !selectCols.contains(", Q.provider_id")) {
-      selectCols.add(", Q.provider_id");
-      selectColsPE.add(", AC.provider_id");
-    }
-    if (checkColumnTable(criteria, "qualifier") && !selectCols.contains(", Q.qualifier_concept_id")) {
-      selectCols.add(", Q.qualifier_concept_id");
-      selectColsPE.add(", AC.qualifier_concept_id");
-    }
-    if (checkColumnTable(criteria, "observationType") && !selectCols.contains(", Q.observation_type_concept_id")) {
-      selectCols.add(", Q.observation_type_concept_id");
-      selectColsPE.add(", AC.observation_type_concept_id");
-    }
-    if (checkColumnTable(criteria, "rangeLow") && !selectCols.contains(", Q.range_low")) {
-      selectCols.add(", Q.range_low");
-      selectColsPE.add(", AC.range_low");
-    }
-    if (checkColumnTable(criteria, "rangeHigh") && !selectCols.contains(", Q.range_high")) {
-      selectCols.add(", Q.range_high");
-      selectColsPE.add(", AC.range_high");
-    }
-    query = StringUtils.replace(query, "@QAdditionalColumnsInclusionN", StringUtils.join(selectCols, ""));
-    return query;
-  }
 }

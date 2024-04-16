@@ -149,9 +149,42 @@ public class SpecimenSqlBuilder<T extends Specimen> extends CriteriaSqlBuilder<T
     // as this logic was fully missing comparing to the other SQL builders adding only the ones which belong to the datetime functionality
     ArrayList<String> selectCols = new ArrayList<>();
 
+    selectCols.add("s.person_id");
+    selectCols.add("s.specimen_id");
+    selectCols.add("s.specimen_date");
+    selectCols.add("s.specimen_concept_id");
+
     // unit
     if (builderOptions != null && builderOptions.isRetainCohortCovariates()) {
       selectCols.add("s.specimen_concept_id concept_id");
+    }
+
+    if (criteria.quantity != null) {
+        selectCols.add("s.quantity");
+    }
+    
+    if (criteria.specimenType != null && criteria.specimenType.length > 0) {
+        selectCols.add("s.specimen_type_concept_id");
+    }
+    
+    // unit
+    if (criteria.unit != null && criteria.unit.length > 0) {
+        selectCols.add("s.unit_concept_id");
+    }
+    
+    // anatomicSite
+    if (criteria.anatomicSite != null && criteria.anatomicSite.length > 0) {
+        selectCols.add("s.anatomic_site_concept_id");
+    }
+
+    // diseaseStatus
+    if (criteria.diseaseStatus != null && criteria.diseaseStatus.length > 0) {
+        selectCols.add("s.disease_status_concept_id");
+    }
+    
+    // sourceId
+    if (criteria.sourceId != null) {
+        selectCols.add("s.specimen_source_id");
     }
 
     // dateAdjustment or default start/end dates

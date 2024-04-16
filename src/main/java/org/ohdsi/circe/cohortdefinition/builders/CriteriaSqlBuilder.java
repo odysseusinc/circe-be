@@ -32,21 +32,25 @@ public abstract class CriteriaSqlBuilder<T extends Criteria> {
     query = embedJoinClauses(query, joinClauses);
     query = embedWhereClauses(query, whereClauses);
 
-    if (options != null) {
-      List<CriteriaColumn> filteredColumns = options.additionalColumns.stream()
-              .filter((column) -> !this.getDefaultColumns().contains(column))
-              .collect(Collectors.toList());
-      if (filteredColumns.size() > 0) {
-        query = StringUtils.replace(query, "@additionalColumns", ", " + this.getAdditionalColumns(filteredColumns, criteria.intervalUnit));
-      } else {
-        query = StringUtils.replace(query, "@additionalColumns", "");
-      }
+    query = embedAdditionalColumns(query, criteria, options);
 
-    } else {
-      query = StringUtils.replace(query, "@additionalColumns", "");
-    }
     return query;
   }
+  
+  protected String embedAdditionalColumns(String query, T criteria, BuilderOptions options) {
+      if (options != null) {
+        List<CriteriaColumn> filteredColumns = options.additionalColumns.stream()
+          .filter((column) -> !this.getDefaultColumns().contains(column))
+          .collect(Collectors.toList());
+        if (filteredColumns.size() > 0) {
+          return StringUtils.replace(query, "@additionalColumns", ", " + this.getAdditionalColumns(criteria, filteredColumns));
+        } else {
+          return StringUtils.replace(query, "@additionalColumns", "");
+        }
+      } else {
+        return StringUtils.replace(query, "@additionalColumns", "");
+      }
+    }
 
   protected abstract String getTableColumnForCriteriaColumn(CriteriaColumn column, String timeIntervalUnit);
 
@@ -57,6 +61,15 @@ public abstract class CriteriaSqlBuilder<T extends Criteria> {
             }).collect(Collectors.toList()));
     return cols;
   }
+  
+  protected String getAdditionalColumns(T criteria, List<CriteriaColumn> columns) {
+      String cols = String.join(", ", columns.stream()
+              .map((column) -> {
+                return String.format("%s as %s", getTableColumnForCriteriaColumn(column, null), column.columnName());
+              }).collect(Collectors.toList()));
+      return cols;
+    }
+
 
   protected abstract Set<CriteriaColumn> getDefaultColumns();
 
@@ -99,5 +112,9 @@ public abstract class CriteriaSqlBuilder<T extends Criteria> {
     }
     
     return whereClauses;
+  }
+
+  protected void addSelectedField(T criteria, BuilderOptions option) {
+      return;
   }
 }
