@@ -20,41 +20,54 @@ public abstract class CriteriaSqlBuilder<T extends Criteria> {
 
     query = embedCodesetClause(query, criteria);
 
-    List<String> selectClauses = resolveSelectClauses(criteria);
+    List<String> selectClauses = resolveSelectClauses(criteria, options);
     List<String> joinClauses = resolveJoinClauses(criteria);
     List<String> whereClauses = resolveWhereClauses(criteria);
 
-    query = embedOrdinalExpression(query, criteria, whereClauses);
+    query = embedOrdinalExpression(query, criteria, whereClauses, options);
 
     query = embedSelectClauses(query, selectClauses);
     query = embedJoinClauses(query, joinClauses);
     query = embedWhereClauses(query, whereClauses);
 
-    if (options != null) {
-      List<CriteriaColumn> filteredColumns = options.additionalColumns.stream()
-              .filter((column) -> !this.getDefaultColumns().contains(column))
-              .collect(Collectors.toList());
-      if (filteredColumns.size() > 0) {
-        query = StringUtils.replace(query, "@additionalColumns", ", " + this.getAdditionalColumns(filteredColumns));
-      } else {
-        query = StringUtils.replace(query, "@additionalColumns", "");
-      }
-    } else {
-      query = StringUtils.replace(query, "@additionalColumns", "");
-    }
+    query = embedAdditionalColumns(query, criteria, options);
 
     return query;
   }
+  
+  protected String embedAdditionalColumns(String query, T criteria, BuilderOptions options) {
+      if (options != null) {
+        List<CriteriaColumn> filteredColumns = options.additionalColumns.stream()
+          .filter((column) -> !this.getDefaultColumns().contains(column))
+          .collect(Collectors.toList());
+        if (filteredColumns.size() > 0) {
+          return StringUtils.replace(query, "@additionalColumns", ", " + this.getAdditionalColumns(criteria, filteredColumns));
+        } else {
+          return StringUtils.replace(query, "@additionalColumns", "");
+        }
+      } else {
+        return StringUtils.replace(query, "@additionalColumns", "");
+      }
+    }
 
-  protected abstract String getTableColumnForCriteriaColumn(CriteriaColumn column);
+  protected abstract String getTableColumnForCriteriaColumn(CriteriaColumn column, String timeIntervalUnit);
 
-  protected String getAdditionalColumns(List<CriteriaColumn> columns) {
+  protected String getAdditionalColumns(List<CriteriaColumn> columns, String timeIntervalUnit) {
     String cols = String.join(", ", columns.stream()
             .map((column) -> {
-              return String.format("%s as %s", getTableColumnForCriteriaColumn(column), column.columnName());
+              return String.format("%s as %s", getTableColumnForCriteriaColumn(column, timeIntervalUnit), column.columnName());
             }).collect(Collectors.toList()));
     return cols;
   }
+  
+  protected String getAdditionalColumns(T criteria, List<CriteriaColumn> columns) {
+      String cols = String.join(", ", columns.stream()
+              .map((column) -> {
+                return String.format("%s as %s", getTableColumnForCriteriaColumn(column, null), column.columnName());
+              }).collect(Collectors.toList()));
+      return cols;
+    }
+
 
   protected abstract Set<CriteriaColumn> getDefaultColumns();
 
@@ -80,9 +93,9 @@ public abstract class CriteriaSqlBuilder<T extends Criteria> {
 
   protected abstract String embedCodesetClause(String query, T criteria);
 
-  protected abstract String embedOrdinalExpression(String query, T criteria, List<String> whereClauses);
+  protected abstract String embedOrdinalExpression(String query, T criteria, List<String> whereClauses, BuilderOptions options);
 
-  protected List<String> resolveSelectClauses(T criteria) {
+  protected List<String> resolveSelectClauses(T criteria, BuilderOptions builderOptions) {
     return new ArrayList<String>();
   }
 
@@ -97,5 +110,9 @@ public abstract class CriteriaSqlBuilder<T extends Criteria> {
     }
     
     return whereClauses;
+  }
+
+  protected void addSelectedField(T criteria, BuilderOptions option) {
+      return;
   }
 }

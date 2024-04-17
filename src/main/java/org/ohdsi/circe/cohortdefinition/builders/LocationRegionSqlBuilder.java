@@ -30,7 +30,7 @@ public class LocationRegionSqlBuilder<T extends LocationRegion> extends Criteria
   }
 
   @Override
-  protected String getTableColumnForCriteriaColumn(CriteriaColumn column) {
+  protected String getTableColumnForCriteriaColumn(CriteriaColumn column, String timeIntervalUnit) {
     switch (column) {
       case DOMAIN_CONCEPT:
         return "C.region_concept_id";
@@ -51,8 +51,11 @@ public class LocationRegionSqlBuilder<T extends LocationRegion> extends Criteria
   }
 
   @Override
-  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses) {
-
+  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses, BuilderOptions options) {
+    if (options != null && options.isRetainCohortCovariates()) {
+      query = StringUtils.replace(query, "@concept_id", ", C.concept_id");
+    }
+    query = StringUtils.replace(query, "@concept_id", "");
     return query;
   }
 

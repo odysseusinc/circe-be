@@ -55,7 +55,7 @@ public class ObservationPeriodSqlBuilder<T extends ObservationPeriod> extends Cr
   }
 
   @Override
-  protected String getTableColumnForCriteriaColumn(CriteriaColumn column) {
+  protected String getTableColumnForCriteriaColumn(CriteriaColumn column, String timeIntervalUnit) {
     switch (column) {
       case DOMAIN_CONCEPT:
         return "C.period_type_concept_id";
@@ -73,13 +73,24 @@ public class ObservationPeriodSqlBuilder<T extends ObservationPeriod> extends Cr
   }
 
   @Override
-  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses) {
-
-    return query;
+  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses, BuilderOptions options) {
+      if (options != null && options.isRetainCohortCovariates()) {
+          List<String> cColumns = new ArrayList<>();
+          cColumns.add("C.concept_id");
+          
+          if (criteria.periodType != null && criteria.periodType.length > 0) {
+              cColumns.add("C.period_type_concept_id");
+          }
+          
+          query = StringUtils.replace(query, "@c.additionalColumns", ", " + StringUtils.join(cColumns, ","));
+      } else {
+          query = StringUtils.replace(query, "@c.additionalColumns", "");
+      }
+      return query;
   }
 
   @Override
-  protected List<String> resolveSelectClauses(T criteria) {
+  protected List<String> resolveSelectClauses(T criteria, BuilderOptions builderOptions) {
 
     ArrayList<String> selectCols = new ArrayList<>(DEFAULT_SELECT_COLUMNS);
 
@@ -91,6 +102,8 @@ public class ObservationPeriodSqlBuilder<T extends ObservationPeriod> extends Cr
     } else {
       selectCols.add("op.observation_period_start_date as start_date, op.observation_period_end_date as end_date");
     }
+
+    selectCols.add("op.period_type_concept_id concept_id");
     return selectCols;
   }
 
@@ -144,7 +157,7 @@ public class ObservationPeriodSqlBuilder<T extends ObservationPeriod> extends Cr
     // periodType
     if (criteria.periodType != null && criteria.periodType.length > 0) {
       ArrayList<Long> conceptIds = getConceptIdsFromConcepts(criteria.periodType);
-      whereClauses.add(String.format("C.period_type_concept_id in (%s)", StringUtils.join(conceptIds, ",")));
+      whereClauses.add(String.format("C.concept_id in (%s)", StringUtils.join(conceptIds, ",")));
     }
 
     // periodLength

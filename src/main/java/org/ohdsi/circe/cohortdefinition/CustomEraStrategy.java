@@ -31,15 +31,23 @@ public class CustomEraStrategy  extends EndStrategy {
 
   @JsonProperty("GapDays")
   public int gapDays = 0;
+  @JsonProperty("GapUnit")
+  public String gapUnit = "day";
+  @JsonProperty("GapUnitValue")
+  public int gapUnitValue = 0;
 
   @JsonProperty("Offset")
   public int offset = 0;
+  @JsonProperty("OffsetUnit")
+  public String offsetUnit = "day";
+  @JsonProperty("OffsetUnitValue")
+  public int offsetUnitValue = 0;
 
   @JsonProperty("DaysSupplyOverride")
   public Integer daysSupplyOverride = null;
    
   @Override
-  public String accept(IGetEndStrategySqlDispatcher dispatcher, String eventTable) {
-    return dispatcher.getStrategySql(this, eventTable);
+  public String accept(IGetEndStrategySqlDispatcher dispatcher, String eventTable, Boolean retainCohortCovariates) {
+    return dispatcher.getStrategySql(this, eventTable, retainCohortCovariates);
   }  
 }

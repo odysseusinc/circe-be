@@ -1,6 +1,7 @@
 package org.ohdsi.circe.cohortdefinition.builders;
 
 import org.apache.commons.lang3.StringUtils;
+import org.ohdsi.circe.cohortdefinition.IntervalUnit;
 import org.ohdsi.circe.cohortdefinition.ProcedureOccurrence;
 import org.ohdsi.circe.helper.ResourceHelper;
 
@@ -9,6 +10,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
 import org.ohdsi.circe.cohortdefinition.DateAdjustment;
 
 import static org.ohdsi.circe.cohortdefinition.builders.BuilderUtils.buildDateRangeClause;
@@ -39,7 +41,7 @@ public class ProcedureOccurrenceSqlBuilder<T extends ProcedureOccurrence> extend
   }
 
   @Override
-  protected String getTableColumnForCriteriaColumn(CriteriaColumn column) {
+  protected String getTableColumnForCriteriaColumn(CriteriaColumn column, String timeIntervalUnit) {
     switch (column) {
       case DOMAIN_CONCEPT:
         return "C.procedure_concept_id";
@@ -64,7 +66,7 @@ public class ProcedureOccurrenceSqlBuilder<T extends ProcedureOccurrence> extend
   }
 
   @Override
-  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses) {
+  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses, BuilderOptions options) {
 
     // first
     if (criteria.first != null && criteria.first) {
@@ -73,11 +75,42 @@ public class ProcedureOccurrenceSqlBuilder<T extends ProcedureOccurrence> extend
     } else {
       query = StringUtils.replace(query, "@ordinalExpression", "");
     }
+    
+    if (options != null && options.isRetainCohortCovariates()) {
+        List<String> cColumns = new ArrayList<>();
+        cColumns.add("C.concept_id");
+        
+        if (criteria.procedureType != null && criteria.procedureType.length > 0) {
+            cColumns.add("C.procedure_type_concept_id");
+        }
+        
+        if (criteria.modifier != null && criteria.modifier.length > 0) {
+            cColumns.add("C.modifier_concept_id");
+        }
+        
+        if (criteria.quantity != null) {
+            cColumns.add("C.quantity");
+        }
+        
+        if (criteria.procedureSourceConcept != null) {
+            cColumns.add("C.procedure_source_concept_id");
+        }
+        
+        // providerSpecialty
+        if (criteria.providerSpecialty != null && criteria.providerSpecialty.length > 0) {
+            cColumns.add("C.provider_id");
+        }
+        
+        query = StringUtils.replace(query, "@c.additionalColumns", ", " + StringUtils.join(cColumns, ","));
+    } else {
+        query = StringUtils.replace(query, "@c.additionalColumns", "");
+    }
+    
     return query;
   }
 
   @Override
-  protected List<String> resolveSelectClauses(T criteria) {
+  protected List<String> resolveSelectClauses(T criteria, BuilderOptions builderOptions) {
 
     ArrayList<String> selectCols = new ArrayList<>(DEFAULT_SELECT_COLUMNS);
 
@@ -102,7 +135,18 @@ public class ProcedureOccurrenceSqlBuilder<T extends ProcedureOccurrence> extend
               criteria.dateAdjustment.startWith == DateAdjustment.DateType.START_DATE ? "po.procedure_date" : "DATEADD(day,1,po.procedure_date)",
               criteria.dateAdjustment.endWith == DateAdjustment.DateType.START_DATE ? "po.procedure_date" : "DATEADD(day,1,po.procedure_date)"));
     } else {
-      selectCols.add("po.procedure_date as start_date, DATEADD(day,1,po.procedure_date) as end_date");
+        if ((builderOptions == null || !builderOptions.isUseDatetime()) &&
+            (criteria.intervalUnit == null || IntervalUnit.DAY.getName().equals(criteria.intervalUnit))) {
+          selectCols.add("po.procedure_date as start_date, DATEADD(day,1,po.procedure_date) as end_date");
+      }
+      else {
+        // if any specific business logic is necessary if procedure_end_datetime is empty it should be added accordingly
+        selectCols.add("po.procedure_datetime as start_date, po.procedure_end_datetime as end_date");
+      }
+    }
+    // If save covariates is included, add the concept_id column
+    if (builderOptions != null && builderOptions.isRetainCohortCovariates()) {
+      selectCols.add("po.procedure_concept_id concept_id");
     }
     return selectCols;
   }

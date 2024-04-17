@@ -1,6 +1,7 @@
 package org.ohdsi.circe.cohortdefinition.builders;
 
 import org.apache.commons.lang3.StringUtils;
+import org.ohdsi.circe.cohortdefinition.IntervalUnit;
 import org.ohdsi.circe.cohortdefinition.VisitOccurrence;
 import org.ohdsi.circe.helper.ResourceHelper;
 
@@ -9,6 +10,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
 import org.ohdsi.circe.cohortdefinition.DateAdjustment;
 
 public class VisitOccurrenceSqlBuilder<T extends VisitOccurrence> extends CriteriaSqlBuilder<T> {
@@ -32,12 +34,12 @@ public class VisitOccurrenceSqlBuilder<T extends VisitOccurrence> extends Criter
   }
 
   @Override
-  protected String getTableColumnForCriteriaColumn(CriteriaColumn column) {
+  protected String getTableColumnForCriteriaColumn(CriteriaColumn column, String timeIntervalUnit) {
     switch (column) {
       case DOMAIN_CONCEPT:
         return "C.visit_concept_id";
       case DURATION:
-        return "DATEDIFF(d, C.start_date, C.end_date)";
+        return String.format("DATEDIFF(%s,c.start_date, c.end_date)", StringUtils.isEmpty(timeIntervalUnit) ? "d" : timeIntervalUnit);
       default:
         throw new IllegalArgumentException("Invalid CriteriaColumn for Visit Occurrence:" + column.toString());
     }
@@ -55,7 +57,7 @@ public class VisitOccurrenceSqlBuilder<T extends VisitOccurrence> extends Criter
   }
 
   @Override
-  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses) {
+  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses, BuilderOptions options) {
     // first
     if (criteria.first != null && criteria.first == true) {
       whereClauses.add("C.ordinal = 1");
@@ -63,11 +65,29 @@ public class VisitOccurrenceSqlBuilder<T extends VisitOccurrence> extends Criter
     } else {
       query = StringUtils.replace(query, "@ordinalExpression", "");
     }
+    
+    if (options != null && options.isRetainCohortCovariates()) {
+        List<String> cColumns = new ArrayList<>();
+        cColumns.add("C.concept_id");
+        
+        if (criteria.visitSourceConcept != null) {
+            cColumns.add("C.visit_source_concept_id");
+        }
+        
+        // providerSpecialty
+        if (criteria.providerSpecialty != null && criteria.providerSpecialty.length > 0) {
+            cColumns.add("C.provider_id");
+        }
+        
+        query = StringUtils.replace(query, "@c.additionalColumns", ", " + StringUtils.join(cColumns, ","));
+    } else {
+        query = StringUtils.replace(query, "@c.additionalColumns", "");
+    }
     return query;
   }
 
   @Override
-  protected List<String> resolveSelectClauses(T criteria) {
+  protected List<String> resolveSelectClauses(T criteria, BuilderOptions builderOptions) {
 
     ArrayList<String> selectCols = new ArrayList<>(DEFAULT_SELECT_COLUMNS);
 
@@ -92,9 +112,23 @@ public class VisitOccurrenceSqlBuilder<T extends VisitOccurrence> extends Criter
               criteria.dateAdjustment.startWith == DateAdjustment.DateType.START_DATE ? "vo.visit_start_date" : "vo.visit_end_date",
               criteria.dateAdjustment.endWith == DateAdjustment.DateType.START_DATE ? "vo.visit_start_date" : "vo.visit_end_date"));
     } else {
-      selectCols.add("vo.visit_start_date as start_date, vo.visit_end_date as end_date");
+        if ((builderOptions == null || !builderOptions.isUseDatetime()) &&
+            (criteria.intervalUnit == null || IntervalUnit.DAY.getName().equals(criteria.intervalUnit))) {
+          selectCols.add("vo.visit_start_date as start_date, vo.visit_end_date as end_date");
+      }
+      else {
+        // if any specific business logic is necessary if visit_end_datetime is empty it should be added accordingly
+        selectCols.add("vo.visit_start_datetime as start_date, vo.visit_end_datetime as end_date");
+      }
     }
-
+// If save covariates is included, add the concept_id column
+    if (builderOptions != null && builderOptions.isRetainCohortCovariates()) {
+      selectCols.add("vo.visit_concept_id concept_id");
+    }
+    
+    if (criteria.visitSourceConcept != null) {
+        selectCols.add("vo.visit_source_concept_id");
+    }
     return selectCols;
   }
 

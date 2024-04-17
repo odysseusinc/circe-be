@@ -1,15 +1,19 @@
 package org.ohdsi.circe.cohortdefinition.builders;
 
 import org.apache.commons.lang3.StringUtils;
-import org.ohdsi.circe.cohortdefinition.Measurement;
+import org.ohdsi.circe.cohortdefinition.*;
 import org.ohdsi.circe.helper.ResourceHelper;
 
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
-import org.ohdsi.circe.cohortdefinition.DateAdjustment;
+import org.ohdsi.circe.cohortdefinition.IntervalUnit;
+import org.ohdsi.circe.cohortdefinition.Measurement;
 
 import static org.ohdsi.circe.cohortdefinition.builders.BuilderUtils.buildDateRangeClause;
 import static org.ohdsi.circe.cohortdefinition.builders.BuilderUtils.buildNumericRangeClause;
@@ -39,7 +43,7 @@ public class MeasurementSqlBuilder<T extends Measurement> extends CriteriaSqlBui
   }
 
   @Override
-  protected String getTableColumnForCriteriaColumn(CriteriaColumn column) {
+  protected String getTableColumnForCriteriaColumn(CriteriaColumn column, String timeIntervalUnit) {
     switch (column) {
       case DOMAIN_CONCEPT:
         return "C.measurement_concept_id";
@@ -51,6 +55,11 @@ public class MeasurementSqlBuilder<T extends Measurement> extends CriteriaSqlBui
         return "C.range_high";
       case RANGE_LOW:
         return "C.range_low";
+      case VALUE_AS_CONCEPT_ID:
+        return "C.value_as_concept_id";
+      case UNIT:
+        return "C.unit_concept_id";
+
       default:
         throw new IllegalArgumentException("Invalid CriteriaColumn for Measurement:" + column.toString());
     }
@@ -68,7 +77,7 @@ public class MeasurementSqlBuilder<T extends Measurement> extends CriteriaSqlBui
   }
 
   @Override
-  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses) {
+  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses, BuilderOptions options) {
 
     // first
     if (criteria.first != null && criteria.first) {
@@ -78,12 +87,52 @@ public class MeasurementSqlBuilder<T extends Measurement> extends CriteriaSqlBui
       query = StringUtils.replace(query, "@ordinalExpression", "");
     }
 
+    if (options != null && options.isRetainCohortCovariates()) {
+        List<String> cColumns = new ArrayList<>();
+        cColumns.add("C.concept_id");
+        cColumns.add("C.value_as_number");
+      if (criteria.valueAsConcept != null && criteria.valueAsConcept.length > 0) {
+            cColumns.add("C.value_as_concept_id");
+      }
+      // unit
+      if (criteria.unit != null && criteria.unit.length > 0) {
+          cColumns.add("C.unit_concept_id");
+      }
+      // range_low
+      if (criteria.rangeLow != null) {
+          cColumns.add("C.range_low");
+      }
+
+      // range_high
+      if (criteria.rangeHigh != null) {
+          cColumns.add("C.range_high");
+      }
+
+      // providerSpecialty
+      if (criteria.providerSpecialty != null && criteria.providerSpecialty.length > 0) {
+          cColumns.add("C.provider_id");
+      }
+      
+      // measurementType
+      if (criteria.measurementType != null && criteria.measurementType.length > 0) {
+          cColumns.add("C.measurement_type_concept_id");
+      }
+      
+      // operator
+      if (criteria.operator != null && criteria.operator.length > 0) {
+          cColumns.add("C.operator_concept_id");
+      }
+      
+      query = StringUtils.replace(query, "@c.additionalColumns", ", " + StringUtils.join(cColumns, ","));
+    } else {
+      query = StringUtils.replace(query, "@c.additionalColumns", "");
+    }
     return query;
   }
 
 
   @Override
-  protected List<String> resolveSelectClauses(T criteria) {
+  protected List<String> resolveSelectClauses(T criteria, BuilderOptions builderOptions) {
 
     ArrayList<String> selectCols = new ArrayList<>(DEFAULT_SELECT_COLUMNS);
 
@@ -118,7 +167,18 @@ public class MeasurementSqlBuilder<T extends Measurement> extends CriteriaSqlBui
               criteria.dateAdjustment.startWith == DateAdjustment.DateType.START_DATE ? "m.measurement_date" : "DATEADD(day,1,m.measurement_date)",
               criteria.dateAdjustment.endWith == DateAdjustment.DateType.START_DATE ? "m.measurement_date" : "DATEADD(day,1,m.measurement_date)"));
     } else {
-      selectCols.add("m.measurement_date as start_date, DATEADD(day,1,m.measurement_date) as end_date");
+        if ((builderOptions == null || !builderOptions.isUseDatetime()) &&
+            (criteria.intervalUnit == null || IntervalUnit.DAY.getName().equals(criteria.intervalUnit))) {
+          selectCols.add("m.measurement_date as start_date, DATEADD(day,1,m.measurement_date) as end_date");
+      }
+      else {
+        // if any specific business logic is necessary if measurement_datetime is empty it should be added accordingly
+        selectCols.add("m.measurement_datetime as start_date, m.measurement_datetime as end_date");
+      }
+    }
+    // If save covariates is included, add the concept_id column
+    if (builderOptions != null && builderOptions.isRetainCohortCovariates()) {
+      selectCols.add("m.measurement_concept_id concept_id");
     }
     return selectCols;
   }
@@ -137,6 +197,15 @@ public class MeasurementSqlBuilder<T extends Measurement> extends CriteriaSqlBui
     }
     if (criteria.providerSpecialty != null && criteria.providerSpecialty.length > 0) {
       joinClauses.add("LEFT JOIN @cdm_database_schema.PROVIDER PR on C.provider_id = PR.provider_id");
+    }
+    if (criteria.measurementOperand != null && criteria.measurementOperand.measurement != null) {
+      BuilderOptions options = new BuilderOptions();
+      options.additionalColumns = Collections.singletonList(CriteriaColumn.VALUE_AS_NUMBER);
+      String subquery = getCriteriaSql((T) criteria.measurementOperand.measurement, options);
+      joinClauses.add(MessageFormat.format("JOIN (SELECT E.person_id, E.event_id, E.visit_occurrence_id, E.value_as_number, row_number() over (PARTITION BY E.person_id ORDER BY E.start_date, E.event_id {1}) as ordinal FROM (\n{0}\n) E) SC on C.person_id = SC.person_id",
+        subquery,
+        Optional.ofNullable(criteria.measurementOperand.limit).map(limit -> limit.equals("Last") ? "DESC" : "").orElse("")
+      ));
     }
 
     return joinClauses;
@@ -226,6 +295,19 @@ public class MeasurementSqlBuilder<T extends Measurement> extends CriteriaSqlBui
       whereClauses.add(String.format("V.visit_concept_id in (%s)", StringUtils.join(getConceptIdsFromConcepts(criteria.visitType), ",")));
     }
 
+    //Calculation
+    if (criteria.measurementOperand != null) {
+      whereClauses.add(buildNumericRangeClause(
+        MessageFormat.format("(C.value_as_number {0} SC.value_as_number)", criteria.measurementOperand.operator),
+        criteria.measurementOperand.valueAsNumber, ".4f")
+      );
+      if (Optional.ofNullable(criteria.measurementOperand.sameVisit).orElse(false)) {
+        whereClauses.add("SC.visit_occurrence_id = C.visit_occurrence_id");
+      }
+      whereClauses.add("SC.ordinal = 1");
+    }
+
     return whereClauses;
   }
+
 }

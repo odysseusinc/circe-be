@@ -1,6 +1,8 @@
 package org.ohdsi.circe.cohortdefinition.builders;
 
 import org.apache.commons.lang3.StringUtils;
+import org.ohdsi.circe.cohortdefinition.DateAdjustment;
+import org.ohdsi.circe.cohortdefinition.IntervalUnit;
 import org.ohdsi.circe.cohortdefinition.Specimen;
 import org.ohdsi.circe.helper.ResourceHelper;
 
@@ -34,12 +36,14 @@ public class SpecimenSqlBuilder<T extends Specimen> extends CriteriaSqlBuilder<T
   }
 
   @Override
-  protected String getTableColumnForCriteriaColumn(CriteriaColumn column) {
+  protected String getTableColumnForCriteriaColumn(CriteriaColumn column, String timeIntervalUnit) {
     switch (column) {
       case DOMAIN_CONCEPT:
         return "C.specimen_concept_id";
       case DURATION:
         return "CAST(1 as int)";
+      case UNIT:
+        return "C.unit_concept_id";
       default:
         throw new IllegalArgumentException("Invalid CriteriaColumn for Specimen:" + column.toString());
     }
@@ -56,7 +60,7 @@ public class SpecimenSqlBuilder<T extends Specimen> extends CriteriaSqlBuilder<T
   }
 
   @Override
-  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses) {
+  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses, BuilderOptions options) {
 
     // first
     if (criteria.first != null && criteria.first) {
@@ -65,6 +69,43 @@ public class SpecimenSqlBuilder<T extends Specimen> extends CriteriaSqlBuilder<T
     } else {
       query = StringUtils.replace(query, "@ordinalExpression", "");
     }
+    
+    if (options != null && options.isRetainCohortCovariates()) {
+        List<String> cColumns = new ArrayList<>();
+        cColumns.add("C.concept_id");
+        if (criteria.occurrenceStartDate != null) {
+            cColumns.add("C.specimen_date");
+        }
+        
+        if (criteria.specimenType != null && criteria.specimenType.length > 0) {
+            cColumns.add("C.specimen_type_concept_id");
+        }
+        
+        if (criteria.unit != null && criteria.unit.length > 0) {
+            cColumns.add("C.unit_concept_id");
+        }
+        
+        if (criteria.quantity != null) {
+            cColumns.add("C.quantity");
+        }
+        
+        if (criteria.anatomicSite != null && criteria.anatomicSite.length > 0) {
+            cColumns.add("C.anatomic_site_concept_id");
+        }
+        
+        if (criteria.diseaseStatus != null && criteria.diseaseStatus.length > 0) {
+            cColumns.add("C.disease_status_concept_id");
+        }
+        
+        if (criteria.sourceId != null) {
+            cColumns.add("C.specimen_source_id");
+        }
+        
+        query = StringUtils.replace(query, "@c.additionalColumns", ", " + StringUtils.join(cColumns, ","));
+    } else {
+        query = StringUtils.replace(query, "@c.additionalColumns", "");
+    }
+    
     return query;
   }
 
@@ -135,4 +176,66 @@ public class SpecimenSqlBuilder<T extends Specimen> extends CriteriaSqlBuilder<T
 
     return whereClauses;
   }
+
+  @Override
+  protected List<String> resolveSelectClauses(T criteria, BuilderOptions builderOptions) {
+    // as this logic was fully missing comparing to the other SQL builders adding only the ones which belong to the datetime functionality
+    ArrayList<String> selectCols = new ArrayList<>();
+
+    selectCols.add("s.person_id");
+    selectCols.add("s.specimen_id");
+    selectCols.add("s.specimen_date");
+    selectCols.add("s.specimen_concept_id");
+
+    // unit
+    if (builderOptions != null && builderOptions.isRetainCohortCovariates()) {
+      selectCols.add("s.specimen_concept_id concept_id");
+    }
+
+    if (criteria.quantity != null) {
+        selectCols.add("s.quantity");
+    }
+    
+    if (criteria.specimenType != null && criteria.specimenType.length > 0) {
+        selectCols.add("s.specimen_type_concept_id");
+    }
+    
+    // unit
+    if (criteria.unit != null && criteria.unit.length > 0) {
+        selectCols.add("s.unit_concept_id");
+    }
+    
+    // anatomicSite
+    if (criteria.anatomicSite != null && criteria.anatomicSite.length > 0) {
+        selectCols.add("s.anatomic_site_concept_id");
+    }
+
+    // diseaseStatus
+    if (criteria.diseaseStatus != null && criteria.diseaseStatus.length > 0) {
+        selectCols.add("s.disease_status_concept_id");
+    }
+    
+    // sourceId
+    if (criteria.sourceId != null) {
+        selectCols.add("s.specimen_source_id");
+    }
+
+    // dateAdjustment or default start/end dates
+    if (criteria.dateAdjustment != null) {
+      selectCols.add(BuilderUtils.getDateAdjustmentExpression(criteria.dateAdjustment,
+              criteria.dateAdjustment.startWith == DateAdjustment.DateType.START_DATE ? "s.specimen_date" : "DATEADD(day,1,s.specimen_date)",
+              criteria.dateAdjustment.endWith == DateAdjustment.DateType.START_DATE ? "s.specimen_date" : "DATEADD(day,1,s.specimen_date)"));
+    } else {
+        if ((builderOptions == null || !builderOptions.isUseDatetime()) &&
+            (criteria.intervalUnit == null || IntervalUnit.DAY.getName().equals(criteria.intervalUnit))) {
+          selectCols.add("s.specimen_date as start_date, DATEADD(day,1,s.specimen_date) as end_date");
+      }
+      else {
+        // if any specific business logic is necessary if specimen_datetime is empty it should be added accordingly
+        selectCols.add("s.specimen_datetime as start_date, s.specimen_datetime as end_date");
+      }
+    }
+    return selectCols;
+  }
+
 }
