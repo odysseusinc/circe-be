@@ -302,7 +302,8 @@ public class CohortExpressionQueryBuilder implements IGetCriteriaSqlDispatcher, 
               });
           } else {
               l.forEach(s -> inclusionRuleInsertN
-                      .add(", CAST(null as " + s.getDataType() + ") " + s.getName() + "_" + listFields.indexOf(l)));
+                      .add(", CAST(null as " + s.getDataType().getType() + ") " + s.getName() + "_"
+                              + listFields.indexOf(l)));
           }
       });
   }
