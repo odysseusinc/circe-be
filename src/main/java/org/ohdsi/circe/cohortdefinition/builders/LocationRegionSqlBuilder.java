@@ -51,7 +51,7 @@ public class LocationRegionSqlBuilder<T extends LocationRegion> extends Criteria
   }
 
   @Override
-  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses) {
+  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses, BuilderOptions options) {
 
     return query;
   }

@@ -24,11 +24,13 @@ public abstract class CriteriaSqlBuilder<T extends Criteria> {
     List<String> joinClauses = resolveJoinClauses(criteria);
     List<String> whereClauses = resolveWhereClauses(criteria);
 
-    query = embedOrdinalExpression(query, criteria, whereClauses);
+    query = embedOrdinalExpression(query, criteria, whereClauses, options);
 
     query = embedSelectClauses(query, selectClauses);
     query = embedJoinClauses(query, joinClauses);
     query = embedWhereClauses(query, whereClauses);
+    
+    query = embedAdditionalColumns(query, criteria, options);
 
     if (options != null) {
       List<CriteriaColumn> filteredColumns = options.additionalColumns.stream()
@@ -44,6 +46,21 @@ public abstract class CriteriaSqlBuilder<T extends Criteria> {
     }
 
     return query;
+  }
+  
+  protected String embedAdditionalColumns(String query, T criteria, BuilderOptions options) {
+      if (options != null) {
+          List<CriteriaColumn> filteredColumns = options.additionalColumns.stream()
+                  .filter((column) -> !this.getDefaultColumns().contains(column)).collect(Collectors.toList());
+          if (filteredColumns.size() > 0) {
+              return StringUtils.replace(query, "@additionalColumns",
+                      ", " + this.getAdditionalColumns(filteredColumns));
+          } else {
+              return StringUtils.replace(query, "@additionalColumns", "");
+          }
+      } else {
+          return StringUtils.replace(query, "@additionalColumns", "");
+      }
   }
 
   protected abstract String getTableColumnForCriteriaColumn(CriteriaColumn column);
@@ -80,7 +97,8 @@ public abstract class CriteriaSqlBuilder<T extends Criteria> {
 
   protected abstract String embedCodesetClause(String query, T criteria);
 
-  protected abstract String embedOrdinalExpression(String query, T criteria, List<String> whereClauses);
+  protected abstract String embedOrdinalExpression(String query, T criteria, List<String> whereClauses,
+          BuilderOptions options);
 
   protected List<String> resolveSelectClauses(T criteria, BuilderOptions builderOptions) {
     return new ArrayList<String>();
@@ -97,5 +115,9 @@ public abstract class CriteriaSqlBuilder<T extends Criteria> {
     }
     
     return whereClauses;
+  }
+
+  protected void addSelectedField(T criteria, BuilderOptions option) {
+      return;
   }
 }

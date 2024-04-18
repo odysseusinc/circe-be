@@ -37,8 +37,8 @@ public class DateOffsetStrategy extends EndStrategy {
   public String offsetUnit = "day";
 
   @Override
-  public String accept(IGetEndStrategySqlDispatcher dispatcher, String eventTable) {
-    return dispatcher.getStrategySql(this, eventTable);
+  public String accept(IGetEndStrategySqlDispatcher dispatcher, String eventTable, Boolean retainCohortCovariates) {
+      return dispatcher.getStrategySql(this, eventTable, retainCohortCovariates);
   }
 
   public enum DateField {

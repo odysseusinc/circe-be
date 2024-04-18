@@ -68,7 +68,7 @@ public class ObservationSqlBuilder<T extends Observation> extends CriteriaSqlBui
   }
 
   @Override
-  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses) {
+  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses, BuilderOptions options) {
 
     // first
     if (criteria.first != null && criteria.first) {
@@ -77,6 +77,47 @@ public class ObservationSqlBuilder<T extends Observation> extends CriteriaSqlBui
     } else {
       query = StringUtils.replace(query, "@ordinalExpression", "");
     }
+
+    if (options != null && options.isRetainCohortCovariates()) {
+        List<String> cColumns = new ArrayList<>();
+        cColumns.add("C.concept_id");
+        cColumns.add("C.value_as_number");
+        
+      // measurementType
+      if (criteria.observationType != null && criteria.observationType.length > 0) {
+          cColumns.add("C.observation_type_concept_id");
+      }
+
+      // valueAsString
+      if (criteria.valueAsString != null) {
+          cColumns.add("C.value_as_string");
+      }
+
+      // valueAsConcept
+      if (criteria.valueAsConcept != null && criteria.valueAsConcept.length > 0) {
+          cColumns.add("C.value_as_concept_id");
+      }
+
+      // qualifier
+      if (criteria.qualifier != null && criteria.qualifier.length > 0) {
+          cColumns.add("C.qualifier_concept_id");
+      }
+
+      // unit
+      if (criteria.unit != null && criteria.unit.length > 0) {
+          cColumns.add("C.unit_concept_id");
+      }
+
+      // providerSpecialty
+      if (criteria.providerSpecialty != null && criteria.providerSpecialty.length > 0) {
+          cColumns.add("C.provider_id");
+      }
+      
+      query = StringUtils.replace(query, "@c.additionalColumns", ", " + StringUtils.join(cColumns, ","));
+      
+  } else {
+      query = StringUtils.replace(query, "@c.additionalColumns", "");
+  }
 
     return query;
   }
@@ -130,6 +171,12 @@ public class ObservationSqlBuilder<T extends Observation> extends CriteriaSqlBui
         selectCols.add("o.observation_datetime as start_date, o.observation_datetime as end_date");
       }
     }
+    
+    // If save covariates is included, add the concept_id column
+    if (builderOptions != null && builderOptions.isRetainCohortCovariates()) {
+        selectCols.add("o.observation_concept_id concept_id");
+    }
+    
     return selectCols;
   }
 

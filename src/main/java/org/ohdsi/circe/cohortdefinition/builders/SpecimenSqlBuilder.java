@@ -58,7 +58,7 @@ public class SpecimenSqlBuilder<T extends Specimen> extends CriteriaSqlBuilder<T
   }
 
   @Override
-  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses) {
+  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses, BuilderOptions options) {
 
     // first
     if (criteria.first != null && criteria.first) {
@@ -66,6 +66,42 @@ public class SpecimenSqlBuilder<T extends Specimen> extends CriteriaSqlBuilder<T
       query = StringUtils.replace(query, "@ordinalExpression", ", row_number() over (PARTITION BY s.person_id ORDER BY s.specimen_date, s.specimen_id) as ordinal");
     } else {
       query = StringUtils.replace(query, "@ordinalExpression", "");
+    }
+    
+    if (options != null && options.isRetainCohortCovariates()) {
+        List<String> cColumns = new ArrayList<>();
+        cColumns.add("C.concept_id");
+        if (criteria.occurrenceStartDate != null) {
+            cColumns.add("C.specimen_date");
+        }
+        
+        if (criteria.specimenType != null && criteria.specimenType.length > 0) {
+            cColumns.add("C.specimen_type_concept_id");
+        }
+        
+        if (criteria.unit != null && criteria.unit.length > 0) {
+            cColumns.add("C.unit_concept_id");
+        }
+        
+        if (criteria.quantity != null) {
+            cColumns.add("C.quantity");
+        }
+        
+        if (criteria.anatomicSite != null && criteria.anatomicSite.length > 0) {
+            cColumns.add("C.anatomic_site_concept_id");
+        }
+        
+        if (criteria.diseaseStatus != null && criteria.diseaseStatus.length > 0) {
+            cColumns.add("C.disease_status_concept_id");
+        }
+        
+        if (criteria.sourceId != null) {
+            cColumns.add("C.specimen_source_id");
+        }
+        
+        query = StringUtils.replace(query, "@c.additionalColumns", ", " + StringUtils.join(cColumns, ","));
+    } else {
+        query = StringUtils.replace(query, "@c.additionalColumns", "");
     }
     return query;
   }
@@ -142,6 +178,43 @@ public class SpecimenSqlBuilder<T extends Specimen> extends CriteriaSqlBuilder<T
   protected List<String> resolveSelectClauses(T criteria, BuilderOptions builderOptions) {
     // as this logic was fully missing comparing to the other SQL builders adding only the ones which belong to the datetime functionality
     ArrayList<String> selectCols = new ArrayList<>();
+
+    if (builderOptions != null && builderOptions.isRetainCohortCovariates()) {
+      selectCols.add("s.specimen_concept_id concept_id");
+    }
+
+    selectCols.add("s.person_id");
+    selectCols.add("s.specimen_id");
+    selectCols.add("s.specimen_date");
+    selectCols.add("s.specimen_concept_id");
+    
+    if (criteria.quantity != null) {
+        selectCols.add("s.quantity");
+    }
+    
+    if (criteria.specimenType != null && criteria.specimenType.length > 0) {
+        selectCols.add("s.specimen_type_concept_id");
+    }
+    
+    // unit
+    if (criteria.unit != null && criteria.unit.length > 0) {
+        selectCols.add("s.unit_concept_id");
+    }
+    
+    // anatomicSite
+    if (criteria.anatomicSite != null && criteria.anatomicSite.length > 0) {
+        selectCols.add("s.anatomic_site_concept_id");
+    }
+
+    // diseaseStatus
+    if (criteria.diseaseStatus != null && criteria.diseaseStatus.length > 0) {
+        selectCols.add("s.disease_status_concept_id");
+    }
+    
+    // sourceId
+    if (criteria.sourceId != null) {
+        selectCols.add("s.specimen_source_id");
+    }
 
     // dateAdjustment or default start/end dates
     if (criteria.dateAdjustment != null) {

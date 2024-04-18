@@ -70,8 +70,59 @@ public class PayerPlanPeriodSqlBuilder<T extends PayerPlanPeriod> extends Criter
   }
 
   @Override
-  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses) {
-
+  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses, BuilderOptions options) {
+      if (options != null && options.isRetainCohortCovariates()) {
+          List<String> cColumns = new ArrayList<>();
+          cColumns.add("C.concept_id");
+          if (criteria.periodStartDate != null) {
+              cColumns.add("C.payer_plan_period_start_date");
+          }
+          
+          if (criteria.periodEndDate != null) {
+              cColumns.add("C.payer_plan_period_end_date");
+          }
+          
+          if (criteria.payerConcept != null) {
+              cColumns.add("C.payer_concept_id");
+          }
+          
+          if (criteria.planConcept != null) {
+              cColumns.add("C.plan_concept_id");
+          }
+          
+          if (criteria.sponsorConcept != null) {
+              cColumns.add("C.sponsor_concept_id");
+          }
+          
+          if (criteria.stopReasonConcept != null) {
+              cColumns.add("C.stop_reason_concept_id");
+          }
+          
+          if (criteria.stopReasonConcept != null) {
+              cColumns.add("C.stop_reason_concept_id");
+          }
+          
+          if (criteria.payerSourceConcept != null) {
+              cColumns.add("C.payer_source_concept_id");
+          }
+          
+          if (criteria.planSourceConcept != null) {
+              cColumns.add("C.plan_source_concept_id");
+          }
+          
+          if (criteria.sponsorSourceConcept != null) {
+              cColumns.add("C.sponsor_source_concept_id");
+          }
+          
+          if (criteria.stopReasonSourceConcept != null) {
+              cColumns.add("C.stop_reason_source_concept_id");
+          }
+          
+          query = StringUtils.replace(query, "@c.additionalColumns", ", " + StringUtils.join(cColumns, ","));
+      } else {
+          query = StringUtils.replace(query, "@c.additionalColumns", "");
+      }
+      
     return query;
   }
 
@@ -126,6 +177,11 @@ public class PayerPlanPeriodSqlBuilder<T extends PayerPlanPeriod> extends Criter
               criteria.dateAdjustment.endWith == DateAdjustment.DateType.START_DATE ? "ppp.payer_plan_period_start_date" : "ppp.payer_plan_period_end_date"));
     } else {
       selectCols.add("ppp.payer_plan_period_start_date as start_date, ppp.payer_plan_period_end_date as end_date");
+    }
+    
+    // If save covariates is included, add the concept_id column
+    if (builderOptions != null && builderOptions.isRetainCohortCovariates()) {
+        selectCols.add("ppp.payer_concept_id concept_id");
     }
     return selectCols;
   }

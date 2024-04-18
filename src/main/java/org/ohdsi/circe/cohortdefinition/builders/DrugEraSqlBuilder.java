@@ -64,7 +64,7 @@ public class DrugEraSqlBuilder<T extends DrugEra> extends CriteriaSqlBuilder<T> 
   }
 
   @Override
-  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses) {
+  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses, BuilderOptions options) {
 
     // first
     if (criteria.first != null && criteria.first == true) {
@@ -72,6 +72,23 @@ public class DrugEraSqlBuilder<T extends DrugEra> extends CriteriaSqlBuilder<T> 
       query = StringUtils.replace(query, "@ordinalExpression", ", row_number() over (PARTITION BY de.person_id ORDER BY de.drug_era_start_date, de.drug_era_id) as ordinal");
     } else {
       query = StringUtils.replace(query, "@ordinalExpression", "");
+    }
+
+    if (options != null && options.isRetainCohortCovariates()) {
+        List<String> cColumns = new ArrayList<>();
+        cColumns.add("C.concept_id");
+        
+        if (criteria.occurrenceCount != null) {
+            cColumns.add("C.drug_exposure_count");
+        }
+        
+        if (criteria.gapDays != null) {
+            cColumns.add("C.gap_days");
+        }
+        
+        query = StringUtils.replace(query, "@c.additionalColumns", ", " + StringUtils.join(cColumns, ","));
+    } else {
+        query = StringUtils.replace(query, "@c.additionalColumns", "");
     }
     return query;
   }
@@ -90,6 +107,11 @@ public class DrugEraSqlBuilder<T extends DrugEra> extends CriteriaSqlBuilder<T> 
               criteria.dateAdjustment.endWith == DateAdjustment.DateType.START_DATE ? "de.drug_era_start_date" : "de.drug_era_end_date"));
     } else {
       selectCols.add("de.drug_era_start_date as start_date, de.drug_era_end_date as end_date");
+    }
+    
+    // If save covariates is included, add the concept_id column
+    if (builderOptions != null && builderOptions.isRetainCohortCovariates()) {
+        selectCols.add("de.drug_concept_id concept_id");
     }
 
     return selectCols;

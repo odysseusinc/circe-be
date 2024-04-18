@@ -1,10 +1,10 @@
 @codesetQuery
 
-SELECT event_id, person_id, start_date, end_date, op_start_date, op_end_date, visit_occurrence_id
+SELECT event_id, person_id, start_date, end_date, op_start_date, op_end_date, visit_occurrence_id@concept_id 
 INTO #qualified_events
 FROM
 (
-  select pe.event_id, pe.person_id, pe.start_date, pe.end_date, pe.op_start_date, pe.op_end_date, row_number() over (partition by pe.person_id order by pe.start_date @QualifiedEventSort) as ordinal, cast(pe.visit_occurrence_id as bigint) as visit_occurrence_id
+  select pe.event_id, pe.person_id, pe.start_date, pe.end_date, pe.op_start_date, pe.op_end_date@pe_concept_id, row_number() over (partition by pe.person_id order by pe.start_date @QualifiedEventSort) as ordinal, cast(pe.visit_occurrence_id as bigint) as visit_occurrence_id
   FROM (@primaryEventsQuery) pe
   @additionalCriteriaQuery
 ) QE
@@ -15,16 +15,16 @@ FROM
 
 @inclusionCohortInserts
 
-select event_id, person_id, start_date, end_date, op_start_date, op_end_date
+select event_id, person_id, start_date, end_date, op_start_date, op_end_date@concept_id @allInclusionColumnsInserts
 into #included_events
 FROM (
-  SELECT event_id, person_id, start_date, end_date, op_start_date, op_end_date, row_number() over (partition by person_id order by start_date @IncludedEventSort) as ordinal
+  SELECT event_id, person_id, start_date, end_date, op_start_date, op_end_date, row_number() over (partition by person_id order by start_date @IncludedEventSort) as ordinal @concept_id@allInclusionColumnsInserts 
   from
   (
-    select Q.event_id, Q.person_id, Q.start_date, Q.end_date, Q.op_start_date, Q.op_end_date, SUM(coalesce(POWER(cast(2 as bigint), I.inclusion_rule_id), 0)) as inclusion_rule_mask
+    select Q.event_id, Q.person_id, Q.start_date, Q.end_date, Q.op_start_date, Q.op_end_date, SUM(coalesce(POWER(cast(2 as bigint), I.inclusion_rule_id), 0)) as inclusion_rule_mask @Qconcept_id@allInclusionColumnsInserts
     from #qualified_events Q
     LEFT JOIN #inclusion_events I on I.person_id = Q.person_id and I.event_id = Q.event_id
-    GROUP BY Q.event_id, Q.person_id, Q.start_date, Q.end_date, Q.op_start_date, Q.op_end_date
+    GROUP BY Q.event_id, Q.person_id, Q.start_date, Q.end_date, Q.op_start_date, Q.op_end_date @Qconcept_id@allInclusionColumnsInserts
   ) MG -- matching groups
 {@ruleTotal != 0}?{
   -- the matching group with all bits set ( POWER(2,# of inclusion rules) - 1 = inclusion_rule_mask
@@ -143,6 +143,28 @@ WHERE ranked.rank_value = 1
 @inclusionImpactAnalysisByPersonQuery
 -- END: Inclusion Impact Analysis - person
 
+-- If retain_cohort_covariates is checked, it is processed to create the #final_cohort_details table
+{@retain_cohort_covariates == 1}?{
+-- BEGIN: Retain Cohort Covariates
+select qe.op_start_date, qe.op_end_date, qe.visit_occurrence_id,
+      ie.*
+      @strategy_ends_columns
+into #final_cohort_details
+from #qualified_events qe
+left join inclusion_events ie on qe.qe_temp_id = ie.qe_temp_id
+@leftjoinEraStrategy
+;
+
+
+select fc.*
+into @results_database_schema."cohort_details_@target_cohort_id"
+from #final_cohort_details fc
+;
+-- END: Retain Cohort Covariates
+TRUNCATE TABLE #final_cohort_details;
+DROP TABLE #final_cohort_details;
+}
+
 -- TRUNCATE TABLE #best_events;
 -- DROP TABLE #best_events;
 
@@ -151,7 +173,6 @@ WHERE ranked.rank_value = 1
 }
 
 @strategy_ends_cleanup
-
 -- TRUNCATE TABLE #cohort_rows;
 -- DROP TABLE #cohort_rows;
 

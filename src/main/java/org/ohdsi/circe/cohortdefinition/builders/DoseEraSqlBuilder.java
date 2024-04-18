@@ -63,7 +63,7 @@ public class DoseEraSqlBuilder<T extends DoseEra> extends CriteriaSqlBuilder<T> 
   }
 
   @Override
-  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses) {
+  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses, BuilderOptions options) {
 
     // first
     if (criteria.first != null && criteria.first) {
@@ -71,6 +71,31 @@ public class DoseEraSqlBuilder<T extends DoseEra> extends CriteriaSqlBuilder<T> 
       query = StringUtils.replace(query, "@ordinalExpression", ", row_number() over (PARTITION BY de.person_id ORDER BY de.dose_era_start_date, de.dose_era_id) as ordinal");
     } else {
       query = StringUtils.replace(query, "@ordinalExpression", "");
+    }
+
+    if (options != null && options.isRetainCohortCovariates()) {  
+        List<String> cColumns = new ArrayList<>();
+        cColumns.add("C.concept_id");
+        if (criteria.eraStartDate != null) {
+            cColumns.add("C.dose_era_start_date");
+        }
+        
+        if (criteria.eraEndDate != null) {
+            cColumns.add("C.dose_era_end_date");
+        }
+        
+        // unit
+        if (criteria.unit != null && criteria.unit.length > 0) {
+            cColumns.add("C.unit_concept_id");
+        }
+        
+        if (criteria.doseValue != null) {
+            cColumns.add("C.dose_value");
+        }
+        
+        query = StringUtils.replace(query, "@c.additionalColumns", ", " + StringUtils.join(cColumns, ","));
+    } else {
+        query = StringUtils.replace(query, "@c.additionalColumns", "");
     }
 
     return query;
@@ -101,6 +126,11 @@ public class DoseEraSqlBuilder<T extends DoseEra> extends CriteriaSqlBuilder<T> 
               criteria.dateAdjustment.endWith == DateAdjustment.DateType.START_DATE ? "de.dose_era_start_date" : "de.dose_era_end_date"));
     } else {
       selectCols.add("de.dose_era_start_date as start_date, de.dose_era_end_date as end_date");
+    }
+
+    // If save covariates is included, add the concept_id column
+    if (builderOptions != null && builderOptions.isRetainCohortCovariates()) {
+      selectCols.add("de.drug_concept_id concept_id");
     }
 
     return selectCols;

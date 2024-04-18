@@ -62,13 +62,41 @@ public class ConditionOccurrenceSqlBuilder<T extends ConditionOccurrence> extend
   }
 
   @Override
-  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses) {
+  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses,
+          BuilderOptions options) {
     // first
     if (criteria.first != null && criteria.first == true) {
       whereClauses.add("C.ordinal = 1");
       query = StringUtils.replace(query, "@ordinalExpression", ", row_number() over (PARTITION BY co.person_id ORDER BY co.condition_start_date, co.condition_occurrence_id) as ordinal");
     } else {
       query = StringUtils.replace(query, "@ordinalExpression", "");
+    }
+
+    // If save covariates is included, add the concept_id column
+    if (options != null && options.isRetainCohortCovariates()) {
+        List<String> cColumns = new ArrayList<>();
+        cColumns.add("C.concept_id");
+        
+        if (criteria.conditionType != null && criteria.conditionType.length > 0) {
+            cColumns.add("C.condition_type_concept_id");
+        }
+        
+        if (criteria.conditionSourceConcept != null) {
+            cColumns.add("C.condition_source_concept_id");
+        }
+        
+        // providerSpecialty
+        if (criteria.providerSpecialty != null && criteria.providerSpecialty.length > 0) {
+            cColumns.add("C.provider_id");
+        }
+        
+        if (criteria.conditionStatus != null && criteria.conditionStatus.length > 0) {
+            cColumns.add("C.condition_status_concept_id");
+        }
+        
+        query = StringUtils.replace(query, "@c.additionalColumns", ", " + StringUtils.join(cColumns, ","));
+    } else {
+        query = StringUtils.replace(query, "@c.additionalColumns", "");
     }
 
     return query;
@@ -107,6 +135,15 @@ public class ConditionOccurrenceSqlBuilder<T extends ConditionOccurrence> extend
         // if any specific business logic is necessary if condition_end_datetime is empty it should be added accordingly as for the 'day' case
         selectCols.add("co.condition_start_datetime as start_date, co.condition_end_datetime as end_date");
       }
+    }
+    
+    // If save covariates is included, add the concept_id column
+    if (builderOptions != null && builderOptions.isRetainCohortCovariates()) {
+        selectCols.add("co.condition_concept_id concept_id");
+    }
+
+    if (criteria.conditionSourceConcept != null) {
+        selectCols.add("co.condition_source_concept_id");
     }
     return selectCols;
   }

@@ -71,7 +71,7 @@ public class DrugExposureSqlBuilder<T extends DrugExposure> extends CriteriaSqlB
   }
 
   @Override
-  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses) {
+  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses, BuilderOptions options) {
 
     // first
     if (criteria.first != null && criteria.first) {
@@ -80,6 +80,52 @@ public class DrugExposureSqlBuilder<T extends DrugExposure> extends CriteriaSqlB
     } else {
       query = StringUtils.replace(query, "@ordinalExpression", "");
     }
+
+    if (options != null && options.isRetainCohortCovariates()) {
+        List<String> cColumns = new ArrayList<>();
+        cColumns.add("C.concept_id");
+        
+        if (criteria.drugType != null && criteria.drugType.length > 0) {
+            cColumns.add("C.drug_type_concept_id");
+        }
+        
+        if (criteria.stopReason != null) {
+            cColumns.add("C.stop_reason");
+        }
+        
+        if (criteria.refills != null) {
+            cColumns.add("C.refills");
+        }
+        
+        if (criteria.quantity != null) {
+            cColumns.add("C.quantity");
+        }
+        
+        if (criteria.daysSupply != null) {
+            cColumns.add("C.days_supply");
+        }
+        
+        if (criteria.routeConcept != null && criteria.routeConcept.length > 0) {
+            cColumns.add("C.route_concept_id");
+        }
+        
+        if (criteria.lotNumber != null) {
+            cColumns.add("C.lot_number");
+        }
+        
+        if (criteria.drugSourceConcept != null) {
+            cColumns.add("C.drug_source_concept_id");
+        }
+        
+        // providerSpecialty
+        if (criteria.providerSpecialty != null && criteria.providerSpecialty.length > 0) {
+            cColumns.add("C.provider_id");
+        }
+        
+        query = StringUtils.replace(query, "@c.additionalColumns", ", " + StringUtils.join(cColumns, ","));
+    } else {
+        query = StringUtils.replace(query, "@c.additionalColumns", "");
+    }    
 
     return query;
   }
@@ -140,6 +186,15 @@ public class DrugExposureSqlBuilder<T extends DrugExposure> extends CriteriaSqlB
         // if any specific business logic is necessary if drug_exposure_end_datetime is empty it should be added accordingly as for the 'day' case
         selectCols.add("de.drug_exposure_start_datetime as start_date, de.drug_exposure_end_datetime as end_date");
       }
+    }
+    
+    // If save covariates is included, add the concept_id column
+    if (builderOptions != null && builderOptions.isRetainCohortCovariates()) {
+        selectCols.add("de.drug_concept_id concept_id");
+    }
+
+    if (criteria.drugSourceConcept != null) {
+        selectCols.add("de.drug_source_concept_id");
     }
     return selectCols;
   }

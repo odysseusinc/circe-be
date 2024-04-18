@@ -135,6 +135,27 @@ public class CohortGeneration_5_0_0_Test extends AbstractDatabaseTest {
     // execute on database, expect no errors
     jdbcTemplate.batchUpdate(SqlSplit.splitSql(cohortSql));
   }
+  
+  @Test
+  public void allCriteriaTestWithRetainingCohortCovariates() throws SQLException {
+      
+      final CohortExpressionQueryBuilder.BuildExpressionQueryOptions options = buildExpressionQueryOptions(1,
+              "allCriteriaTest");
+      options.retainCohortCovariates = true;
+      
+      // prepare results schema
+      prepareSchema(options.resultSchema, RESULTS_DDL_PATH);
+      
+      // load 'all' criteria json
+      final CohortExpression expression = CohortExpression
+              .fromJson(ResourceHelper.GetResourceAsString("/cohortgeneration/allCriteria/allCriteriaExpression.json"));
+      
+      // build Sql
+      final String cohortSql = buildExpressionSql(expression, options);
+      
+      // execute on database, expect no errors
+      jdbcTemplate.batchUpdate(SqlSplit.splitSql(cohortSql));
+  }
 
   @Test
   public void allCriteriaTestWithTimeUnitInterval() throws SQLException {

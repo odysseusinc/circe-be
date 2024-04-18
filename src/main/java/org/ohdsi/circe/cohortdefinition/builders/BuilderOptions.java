@@ -8,6 +8,8 @@ public class BuilderOptions {
   public List<CriteriaColumn> additionalColumns = new ArrayList<>();
   
   private boolean useDatetime;
+  
+  private boolean retainCohortCovariates;
 
   public boolean isUseDatetime() {
     return useDatetime;
@@ -15,5 +17,13 @@ public class BuilderOptions {
 
   public void setUseDatetime(Boolean useDatetime) {
     this.useDatetime = useDatetime == null ? false: useDatetime;
+  }
+  
+  public boolean isRetainCohortCovariates() {
+      return retainCohortCovariates;
+  }
+  
+  public void setRetainCohortCovariates(boolean retainCohortCovariates) {
+      this.retainCohortCovariates = retainCohortCovariates;
   }
 }

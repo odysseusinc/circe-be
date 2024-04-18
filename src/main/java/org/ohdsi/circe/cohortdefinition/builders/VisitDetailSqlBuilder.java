@@ -55,13 +55,41 @@ public class VisitDetailSqlBuilder<T extends VisitDetail> extends CriteriaSqlBui
   }
 
   @Override
-  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses) {
+  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses, BuilderOptions options) {
     // first
     if (criteria.first != null && criteria.first == true) {
       whereClauses.add("C.ordinal = 1");
       query = StringUtils.replace(query, "@ordinalExpression", ", row_number() over (PARTITION BY vd.person_id ORDER BY vd.visit_detail_start_date, vd.visit_detail_id) as ordinal");
     } else {
       query = StringUtils.replace(query, "@ordinalExpression", "");
+    }
+
+    if (options != null && options.isRetainCohortCovariates()) {
+        List<String> cColumns = new ArrayList<>();
+        cColumns.add("C.concept_id");
+        if (criteria.visitDetailStartDate != null) {
+            cColumns.add("C.visit_detail_start_date");
+        }
+        
+        if (criteria.visitDetailEndDate != null) {
+            cColumns.add("C.visit_detail_end_date");
+        }
+        
+        if (criteria.visitDetailTypeCS != null) {
+            cColumns.add("C.visit_detail_type_concept_id");
+        }
+        
+        if (criteria.visitDetailSourceConcept != null) {
+            cColumns.add("C.visit_detail_source_concept_id");
+        }
+        
+        if (criteria.providerSpecialtyCS != null) {
+            cColumns.add("C.provider_id");
+        }
+        
+        query = StringUtils.replace(query, "@c.additionalColumns", ", " + StringUtils.join(cColumns, ","));
+    } else {
+        query = StringUtils.replace(query, "@c.additionalColumns", "");
     }
     return query;
   }
@@ -101,6 +129,12 @@ public class VisitDetailSqlBuilder<T extends VisitDetail> extends CriteriaSqlBui
         selectCols.add("vd.visit_detail_start_datetime as start_date, vd.visit_detail_end_datetime as end_date");
       }
     }
+    
+    // If save covariates is included, add the concept_id column
+    if (builderOptions != null && builderOptions.isRetainCohortCovariates()) {
+        selectCols.add("vd.visit_detail_concept_id concept_id");
+    }
+    
     return selectCols;
   }
 

@@ -70,7 +70,7 @@ public class MeasurementSqlBuilder<T extends Measurement> extends CriteriaSqlBui
   }
 
   @Override
-  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses) {
+  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses, BuilderOptions options) {
 
     // first
     if (criteria.first != null && criteria.first) {
@@ -80,6 +80,47 @@ public class MeasurementSqlBuilder<T extends Measurement> extends CriteriaSqlBui
       query = StringUtils.replace(query, "@ordinalExpression", "");
     }
 
+    if (options != null && options.isRetainCohortCovariates()) {
+        List<String> cColumns = new ArrayList<>();
+        cColumns.add("C.concept_id");
+        cColumns.add("C.value_as_number");
+      if (criteria.valueAsConcept != null && criteria.valueAsConcept.length > 0) {
+            cColumns.add("C.value_as_concept_id");
+      }
+      // unit
+      if (criteria.unit != null && criteria.unit.length > 0) {
+          cColumns.add("C.unit_concept_id");
+      }
+      // range_low
+      if (criteria.rangeLow != null) {
+          cColumns.add("C.range_low");
+      }
+
+      // range_high
+      if (criteria.rangeHigh != null) {
+          cColumns.add("C.range_high");
+      }
+
+      // providerSpecialty
+      if (criteria.providerSpecialty != null && criteria.providerSpecialty.length > 0) {
+          cColumns.add("C.provider_id");
+      }
+      
+      // measurementType
+      if (criteria.measurementType != null && criteria.measurementType.length > 0) {
+          cColumns.add("C.measurement_type_concept_id");
+      }
+      
+      // operator
+      if (criteria.operator != null && criteria.operator.length > 0) {
+          cColumns.add("C.operator_concept_id");
+      }
+      
+      query = StringUtils.replace(query, "@c.additionalColumns", ", " + StringUtils.join(cColumns, ","));
+    } else {
+      query = StringUtils.replace(query, "@c.additionalColumns", "");
+    }
+    
     return query;
   }
 
@@ -129,6 +170,12 @@ public class MeasurementSqlBuilder<T extends Measurement> extends CriteriaSqlBui
         selectCols.add("m.measurement_datetime as start_date, m.measurement_datetime as end_date");
       }
     }
+    
+    // If save covariates is included, add the concept_id column
+    if (builderOptions != null && builderOptions.isRetainCohortCovariates()) {
+        selectCols.add("m.measurement_concept_id concept_id");
+    }
+    
     return selectCols;
   }
 

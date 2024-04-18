@@ -57,13 +57,31 @@ public class VisitOccurrenceSqlBuilder<T extends VisitOccurrence> extends Criter
   }
 
   @Override
-  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses) {
+  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses, BuilderOptions options) {
     // first
     if (criteria.first != null && criteria.first == true) {
       whereClauses.add("C.ordinal = 1");
       query = StringUtils.replace(query, "@ordinalExpression", ", row_number() over (PARTITION BY vo.person_id ORDER BY vo.visit_start_date, vo.visit_occurrence_id) as ordinal");
     } else {
       query = StringUtils.replace(query, "@ordinalExpression", "");
+    }
+
+    if (options != null && options.isRetainCohortCovariates()) {
+        List<String> cColumns = new ArrayList<>();
+        cColumns.add("C.concept_id");
+        
+        if (criteria.visitSourceConcept != null) {
+            cColumns.add("C.visit_source_concept_id");
+        }
+        
+        // providerSpecialty
+        if (criteria.providerSpecialty != null && criteria.providerSpecialty.length > 0) {
+            cColumns.add("C.provider_id");
+        }
+        
+        query = StringUtils.replace(query, "@c.additionalColumns", ", " + StringUtils.join(cColumns, ","));
+    } else {
+        query = StringUtils.replace(query, "@c.additionalColumns", "");
     }
     return query;
   }
@@ -102,6 +120,15 @@ public class VisitOccurrenceSqlBuilder<T extends VisitOccurrence> extends Criter
         // if any specific business logic is necessary if visit_end_datetime is empty it should be added accordingly
         selectCols.add("vo.visit_start_datetime as start_date, vo.visit_end_datetime as end_date");
       }
+    }
+    
+    // If save covariates is included, add the concept_id column
+    if (builderOptions != null && builderOptions.isRetainCohortCovariates()) {
+        selectCols.add("vo.visit_concept_id concept_id");
+    }
+
+    if (criteria.visitSourceConcept != null) {
+        selectCols.add("vo.visit_source_concept_id");
     }
     return selectCols;
   }

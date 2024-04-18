@@ -66,7 +66,7 @@ public class ProcedureOccurrenceSqlBuilder<T extends ProcedureOccurrence> extend
   }
 
   @Override
-  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses) {
+  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses, BuilderOptions options) {
 
     // first
     if (criteria.first != null && criteria.first) {
@@ -74,6 +74,36 @@ public class ProcedureOccurrenceSqlBuilder<T extends ProcedureOccurrence> extend
       query = StringUtils.replace(query, "@ordinalExpression", ", row_number() over (PARTITION BY po.person_id ORDER BY po.procedure_date, po.procedure_occurrence_id) as ordinal");
     } else {
       query = StringUtils.replace(query, "@ordinalExpression", "");
+    }
+
+    if (options != null && options.isRetainCohortCovariates()) {
+        List<String> cColumns = new ArrayList<>();
+        cColumns.add("C.concept_id");
+        
+        if (criteria.procedureType != null && criteria.procedureType.length > 0) {
+            cColumns.add("C.procedure_type_concept_id");
+        }
+        
+        if (criteria.modifier != null && criteria.modifier.length > 0) {
+            cColumns.add("C.modifier_concept_id");
+        }
+        
+        if (criteria.quantity != null) {
+            cColumns.add("C.quantity");
+        }
+        
+        if (criteria.procedureSourceConcept != null) {
+            cColumns.add("C.procedure_source_concept_id");
+        }
+        
+        // providerSpecialty
+        if (criteria.providerSpecialty != null && criteria.providerSpecialty.length > 0) {
+            cColumns.add("C.provider_id");
+        }
+        
+        query = StringUtils.replace(query, "@c.additionalColumns", ", " + StringUtils.join(cColumns, ","));
+    } else {
+        query = StringUtils.replace(query, "@c.additionalColumns", "");
     }
     return query;
   }
@@ -112,6 +142,11 @@ public class ProcedureOccurrenceSqlBuilder<T extends ProcedureOccurrence> extend
         // if any specific business logic is necessary if procedure_end_datetime is empty it should be added accordingly
         selectCols.add("po.procedure_datetime as start_date, po.procedure_end_datetime as end_date");
       }
+    }
+    
+    // If save covariates is included, add the concept_id column
+    if (builderOptions != null && builderOptions.isRetainCohortCovariates()) {
+        selectCols.add("po.procedure_concept_id concept_id");
     }
     return selectCols;
   }

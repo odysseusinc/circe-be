@@ -60,7 +60,7 @@ public class ConditionEraSqlBuilder<T extends ConditionEra> extends CriteriaSqlB
   }
 
   @Override
-  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses) {
+  protected String embedOrdinalExpression(String query, T criteria, List<String> whereClauses, BuilderOptions options) {
 
     // first
     if (criteria.first != null && criteria.first) {
@@ -68,6 +68,19 @@ public class ConditionEraSqlBuilder<T extends ConditionEra> extends CriteriaSqlB
       query = StringUtils.replace(query, "@ordinalExpression", ", row_number() over (PARTITION BY ce.person_id ORDER BY ce.condition_era_start_date, ce.condition_era_id) as ordinal");
     } else {
       query = StringUtils.replace(query, "@ordinalExpression", "");
+    }
+
+    if (options != null && options.isRetainCohortCovariates()) {
+        List<String> cColumns = new ArrayList<>();
+        cColumns.add("C.concept_id");
+        
+        if (criteria.occurrenceCount != null) {
+            cColumns.add("C.condition_occurrence_count");
+        }
+        
+        query = StringUtils.replace(query, "@c.additionalColumns", ", " + StringUtils.join(cColumns, ","));
+    } else {
+        query = StringUtils.replace(query, "@c.additionalColumns", "");
     }
     return query;
   }
@@ -84,6 +97,12 @@ public class ConditionEraSqlBuilder<T extends ConditionEra> extends CriteriaSqlB
     } else {
       selectCols.add("ce.condition_era_start_date as start_date, ce.condition_era_end_date as end_date");
     }
+    
+    // If save covariates is included, add the concept_id column
+    if (builderOptions != null && builderOptions.isRetainCohortCovariates()) {
+        selectCols.add("ce.condition_concept_id concept_id");
+    }
+    
     return selectCols;
   }
 
