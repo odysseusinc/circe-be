@@ -125,11 +125,12 @@ public class VisitOccurrenceSqlBuilder<T extends VisitOccurrence> extends Criter
     // If save covariates is included, add the concept_id column
     if (builderOptions != null && builderOptions.isRetainCohortCovariates()) {
         selectCols.add("vo.visit_concept_id concept_id");
+        
+        if (criteria.visitSourceConcept != null) {
+            selectCols.add("vo.visit_source_concept_id");
+        }
     }
 
-    if (criteria.visitSourceConcept != null) {
-        selectCols.add("vo.visit_source_concept_id");
-    }
     return selectCols;
   }
 

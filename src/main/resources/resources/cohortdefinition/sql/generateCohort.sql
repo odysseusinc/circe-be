@@ -151,10 +151,20 @@ select qe.op_start_date, qe.op_end_date, qe.visit_occurrence_id,
       @strategy_ends_columns
 into #final_cohort_details
 from #qualified_events qe
-left join inclusion_events ie on qe.qe_temp_id = ie.qe_temp_id
+left join inclusion_events ie on qe.concept_id = ie.concept_id
 @leftjoinEraStrategy
 ;
 
+-- If @results_database_schema."cohort_details_@target_cohort_id" exists, remove it and create new one.
+DO
+$do$
+BEGIN
+   if EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES where table_schema = '@results_database_schema' and TABLE_NAME = 'cohort_details_@target_cohort_id') THEN
+      DROP TABLE @results_database_schema."cohort_details_@target_cohort_id";
+   END IF;
+END
+$do$
+;
 
 select fc.*
 into @results_database_schema."cohort_details_@target_cohort_id"

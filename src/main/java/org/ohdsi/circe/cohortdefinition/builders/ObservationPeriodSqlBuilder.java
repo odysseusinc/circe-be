@@ -103,7 +103,9 @@ public class ObservationPeriodSqlBuilder<T extends ObservationPeriod> extends Cr
       selectCols.add("op.observation_period_start_date as start_date, op.observation_period_end_date as end_date");
     }
     
-    selectCols.add("op.period_type_concept_id concept_id");
+    if (builderOptions != null && builderOptions.isRetainCohortCovariates()) {
+        selectCols.add("op.period_type_concept_id concept_id");
+    }
     
     return selectCols;
   }
