@@ -159,7 +159,7 @@ public class CohortExpressionQueryBuilder implements IGetCriteriaSqlDispatcher, 
     ArrayList<String> selectColsPE = new ArrayList<>();
     if (options.isRetainCohortCovariates()) {
 		  eventQuery = StringUtils.replace(eventQuery, "@concept_id", ", Q.concept_id");
-      eventQuery = criteria.embedWrapCriteriaQuery(eventQuery, selectColsPE);
+          eventQuery = criteria.embedWrapCriteriaQuery(eventQuery, selectColsPE, options);
     } else {
       eventQuery = StringUtils.replace(eventQuery, "@concept_id", "");
       eventQuery = StringUtils.replace(eventQuery, "@QAdditionalColumnsInclusionN", "");
@@ -223,10 +223,12 @@ public class CohortExpressionQueryBuilder implements IGetCriteriaSqlDispatcher, 
     String query = PRIMARY_EVENTS_TEMPLATE;
 
     ArrayList<String> criteriaQueries = new ArrayList<>();
-
+    
+    builderOptions.setPrimaryCriteria(true);
     for (Criteria c : primaryCriteria.criteriaList) {
       criteriaQueries.add(c.accept(this, builderOptions));
     }
+    builderOptions.setPrimaryCriteria(false);
 
     query = StringUtils.replace(query, "@criteriaQueries", StringUtils.join(criteriaQueries, "\nUNION ALL\n"));
 

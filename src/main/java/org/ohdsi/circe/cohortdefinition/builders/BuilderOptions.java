@@ -10,6 +10,8 @@ public class BuilderOptions {
   private boolean useDatetime;
   
   private boolean retainCohortCovariates;
+  
+  private boolean primaryCriteria = false;
 
   public boolean isUseDatetime() {
     return useDatetime;
@@ -26,4 +28,13 @@ public class BuilderOptions {
   public void setRetainCohortCovariates(boolean retainCohortCovariates) {
       this.retainCohortCovariates = retainCohortCovariates;
   }
+  
+  public boolean isPrimaryCriteria() {
+      return primaryCriteria;
+  }
+  
+  public void setPrimaryCriteria(boolean primaryCriteria) {
+      this.primaryCriteria = primaryCriteria;
+  }
+  
 }
