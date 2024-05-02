@@ -66,12 +66,6 @@ public abstract class Criteria {
       return new ArrayList<>();
   }
   
-  public String embedCriteriaGroup(String query) {
-      query = StringUtils.replace(query, "@e.additonColumns", "");
-      query = StringUtils.replace(query, "@additonColumnsGroup", "");
-      return query;
-  }
-  
   public String embedWindowedCriteriaQuery(String query, Map<String, ColumnFieldData> mapDistinctField) {
       query = StringUtils.replace(query, "@additionColumnscc", "");
       return query;
