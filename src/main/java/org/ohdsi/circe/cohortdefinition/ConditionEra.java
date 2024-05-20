@@ -84,21 +84,6 @@ public class ConditionEra extends Criteria {
   }
   
   @Override
-  public String embedCriteriaGroup(String query) {
-      List<String> selectColsCQ = new ArrayList<>();
-      List<String> selectColsG = new ArrayList<>();
-      
-      if (occurrenceCount != null) {
-          selectColsCQ.add(", CQ.condition_occurrence_count");
-          selectColsG.add(", G.condition_occurrence_count");
-      }
-      
-      query = StringUtils.replace(query, "@e.additonColumns", StringUtils.join(selectColsCQ, ""));
-      query = StringUtils.replace(query, "@additonColumnsGroup", StringUtils.join(selectColsG, ""));
-      return query;
-  }
-  
-  @Override
   public String embedWindowedCriteriaQuery(String query, Map<String, ColumnFieldData> mapDistinctField) {
       List<String> selectCols = new ArrayList<>();
       List<String> groupCols = new ArrayList<>();
@@ -129,12 +114,14 @@ public class ConditionEra extends Criteria {
   }
   
   @Override
-  public String embedWrapCriteriaQuery(String query, List<String> selectColsPE) {
+  public String embedWrapCriteriaQuery(String query, List<String> selectColsPE, BuilderOptions options) {
       ArrayList<String> selectCols = new ArrayList<>();
       
-      if (occurrenceCount != null) {
-          selectCols.add(", Q.condition_occurrence_count");
-          selectColsPE.add(", PE.condition_occurrence_count");
+      if(!options.isPrimaryCriteria()){
+        if (occurrenceCount != null) {
+            selectCols.add(", Q.condition_occurrence_count");
+            selectColsPE.add(", PE.condition_occurrence_count");
+        }
       }
       
       query = StringUtils.replace(query, "@QAdditionalColumnsInclusionN", StringUtils.join(selectCols, ""));

@@ -103,6 +103,9 @@ public class CohortExpressionQueryBuilder implements IGetCriteriaSqlDispatcher, 
 
     @JsonProperty("cohortId")
     public Integer cohortId;
+    
+    @JsonProperty("resultCohortId")
+    public Integer resultCohortId;
 
     @JsonProperty("cdmSchema")
     public String cdmSchema;
@@ -159,7 +162,7 @@ public class CohortExpressionQueryBuilder implements IGetCriteriaSqlDispatcher, 
     ArrayList<String> selectColsPE = new ArrayList<>();
     if (options.isRetainCohortCovariates()) {
 		  eventQuery = StringUtils.replace(eventQuery, "@concept_id", ", Q.concept_id");
-      eventQuery = criteria.embedWrapCriteriaQuery(eventQuery, selectColsPE);
+          eventQuery = criteria.embedWrapCriteriaQuery(eventQuery, selectColsPE, options);
     } else {
       eventQuery = StringUtils.replace(eventQuery, "@concept_id", "");
       eventQuery = StringUtils.replace(eventQuery, "@QAdditionalColumnsInclusionN", "");
@@ -223,10 +226,12 @@ public class CohortExpressionQueryBuilder implements IGetCriteriaSqlDispatcher, 
     String query = PRIMARY_EVENTS_TEMPLATE;
 
     ArrayList<String> criteriaQueries = new ArrayList<>();
-
+    
+    builderOptions.setPrimaryCriteria(true);
     for (Criteria c : primaryCriteria.criteriaList) {
       criteriaQueries.add(c.accept(this, builderOptions));
     }
+    builderOptions.setPrimaryCriteria(false);
 
     query = StringUtils.replace(query, "@criteriaQueries", StringUtils.join(criteriaQueries, "\nUNION ALL\n"));
 
@@ -355,13 +360,16 @@ public class CohortExpressionQueryBuilder implements IGetCriteriaSqlDispatcher, 
           CriteriaGroup cg = expression.inclusionRules.get(i).expression;
           if (cg.criteriaList == null || cg.criteriaList.length == 0) {
               listField.add(new ArrayList<>());
+          } else {
+              Map<String, ColumnFieldData> mapDistinctField = new HashMap<>();
+              for (CorelatedCriteria cc : cg.criteriaList) {
+                  cc.criteria.getSelectedField(options.retainCohortCovariates).forEach(c -> {
+                      mapDistinctField.put(c.getName(), c);
+                  });
+              }
+              listField.add(mapDistinctField.entrySet().stream().map(e -> e.getValue()).collect(Collectors.toList()));
           }
-          for (CorelatedCriteria cc : cg.criteriaList) {
-              List<ColumnFieldData> fieldDatas = cc.criteria
-                      .getSelectedField(builderOptions.isRetainCohortCovariates());
-              listField.add(fieldDatas);
-          }
-      }      
+      }
 
       for (int i = 0; i < expression.inclusionRules.size(); i++) {
         ArrayList<String> lstFieldRuleInsertNValues = new ArrayList<>();
@@ -495,6 +503,9 @@ public class CohortExpressionQueryBuilder implements IGetCriteriaSqlDispatcher, 
       if (options.cohortId != null) {
         resultSql = StringUtils.replace(resultSql, "@target_cohort_id", options.cohortId.toString());
       }
+      if (options.resultCohortId != null) {
+          resultSql = StringUtils.replace(resultSql, "@result_cohort_id", options.resultCohortId.toString());
+      }
 
       resultSql = StringUtils.replace(resultSql, "@generateStats", options.generateStats ? "1" : "0");
 
@@ -558,21 +569,29 @@ public class CohortExpressionQueryBuilder implements IGetCriteriaSqlDispatcher, 
         });
     }
     
+    if (retainCohortCovariates) {
+        List<String> selectColsG = new ArrayList<>();
+        List<String> selectColsCQ = new ArrayList<>();
+        
+        for (Map.Entry<String, ColumnFieldData> entry : mapDistinctField.entrySet()) {
+            selectColsG.add(", G." + entry.getKey());
+            selectColsCQ.add(", CQ." + entry.getKey());
+        }
+        query = StringUtils.replace(query, "@e.additonColumns", StringUtils.join(selectColsCQ, ""));
+        query = StringUtils.replace(query, "@additonColumnsGroup", StringUtils.join(selectColsG, ""));
+    } else {
+        query = StringUtils.replace(query, "@e.additonColumns", "");
+        query = StringUtils.replace(query, "@additonColumnsGroup", "");
+    }
+    
     for (CorelatedCriteria cc : group.criteriaList) {
         cc.mapDistinctField = mapDistinctField;
         String acQuery = this.getCorelatedlCriteriaQuery(cc, eventTable, useDatetime, retainCohortCovariates); // ac.accept(this);
-      acQuery = StringUtils.replace(acQuery, "@indexId", "" + indexId);
-      additionalCriteriaQueries.add(acQuery);
-      indexId++;
-
-      if (retainCohortCovariates) {
-          query = cc.criteria.embedCriteriaGroup(query);
-      } else {
-          query = StringUtils.replace(query, "@e.additonColumns", "");
-          query = StringUtils.replace(query, "@additonColumnsGroup", "");
-      }
+        acQuery = StringUtils.replace(acQuery, "@indexId", "" + indexId);
+        additionalCriteriaQueries.add(acQuery);
+        indexId++;
     }
-
+    
     for (DemographicCriteria dc : group.demographicCriteriaList) {
       // the Demographics Criteria refers to an event date/datetime alias start_date, end_date
       // therefore the useDatetime logic is irrelevant at this place!?
@@ -625,10 +644,6 @@ public class CohortExpressionQueryBuilder implements IGetCriteriaSqlDispatcher, 
     }
 
     query = StringUtils.replace(query, "@eventTable", eventTable);
-
-    //If it does not exist group.criteriaList, remove it
-    query = StringUtils.replace(query, "@e.additonColumns", "");
-    query = StringUtils.replace(query, "@additonColumnsGroup", "");
 
     return query;
   }

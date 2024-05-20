@@ -78,14 +78,15 @@ public class DrugEraSqlBuilder<T extends DrugEra> extends CriteriaSqlBuilder<T> 
         List<String> cColumns = new ArrayList<>();
         cColumns.add("C.concept_id");
         
-        if (criteria.occurrenceCount != null) {
-            cColumns.add("C.drug_exposure_count");
+        if(!options.isPrimaryCriteria()){
+          if (criteria.occurrenceCount != null) {
+              cColumns.add("C.drug_exposure_count");
+          }
+          
+          if (criteria.gapDays != null) {
+              cColumns.add("C.gap_days");
+          }
         }
-        
-        if (criteria.gapDays != null) {
-            cColumns.add("C.gap_days");
-        }
-        
         query = StringUtils.replace(query, "@c.additionalColumns", ", " + StringUtils.join(cColumns, ","));
     } else {
         query = StringUtils.replace(query, "@c.additionalColumns", "");

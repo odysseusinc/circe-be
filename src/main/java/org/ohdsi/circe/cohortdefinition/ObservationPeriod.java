@@ -81,21 +81,6 @@ public class ObservationPeriod extends Criteria {
   }
   
   @Override
-  public String embedCriteriaGroup(String query) {
-      ArrayList<String> selectColsCQ = new ArrayList<>();
-      ArrayList<String> selectColsG = new ArrayList<>();
-      
-      if (periodType != null && periodType.length > 0) {
-          selectColsCQ.add(", CQ.period_type_concept_id");
-          selectColsG.add(", G.period_type_concept_id");
-      }
-      
-      query = StringUtils.replace(query, "@e.additonColumns", StringUtils.join(selectColsCQ, ""));
-      query = StringUtils.replace(query, "@additonColumnsGroup", StringUtils.join(selectColsG, ""));
-      return query;
-  }
-  
-  @Override
   public String embedWindowedCriteriaQuery(String query, Map<String, ColumnFieldData> mapDistinctField) {
       List<String> selectCols = new ArrayList<>();
       List<String> groupCols = new ArrayList<>();
@@ -127,12 +112,14 @@ public class ObservationPeriod extends Criteria {
   }
   
   @Override
-  public String embedWrapCriteriaQuery(String query, List<String> selectColsPE) {
+  public String embedWrapCriteriaQuery(String query, List<String> selectColsPE, BuilderOptions options) {
       ArrayList<String> selectCols = new ArrayList<>();
       
-      if (periodType != null && periodType.length > 0) {
-          selectCols.add(", Q.period_type_concept_id");
-          selectColsPE.add(", PE.period_type_concept_id");
+      if(!options.isPrimaryCriteria()){
+        if (periodType != null && periodType.length > 0) {
+            selectCols.add(", Q.period_type_concept_id");
+            selectColsPE.add(", PE.period_type_concept_id");
+        }
       }
       
       query = StringUtils.replace(query, "@QAdditionalColumnsInclusionN", StringUtils.join(selectCols, ""));

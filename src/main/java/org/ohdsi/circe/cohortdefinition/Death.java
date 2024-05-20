@@ -83,31 +83,6 @@ public class Death extends Criteria {
   }
   
   @Override
-  public String embedCriteriaGroup(String query) {
-      ArrayList<String> selectColsCQ = new ArrayList<>();
-      ArrayList<String> selectColsG = new ArrayList<>();
-      
-      if (occurrenceStartDate != null) {
-          selectColsCQ.add(", CQ.death_date");
-          selectColsG.add(", G.death_date");
-      }
-      
-      if (deathType != null && deathType.length > 0) {
-          selectColsCQ.add(", CQ.death_type_concept_id");
-          selectColsG.add(", G.death_type_concept_id");
-      }
-      
-      if (deathSourceConcept != null) {
-          selectColsCQ.add(", CQ.cause_concept_id");
-          selectColsG.add(", G.cause_concept_id");
-      }
-      
-      query = StringUtils.replace(query, "@e.additonColumns", StringUtils.join(selectColsCQ, ""));
-      query = StringUtils.replace(query, "@additonColumnsGroup", StringUtils.join(selectColsG, ""));
-      return query;
-  }
-  
-  @Override
   public String embedWindowedCriteriaQuery(String query, Map<String, ColumnFieldData> mapDistinctField) {
       List<String> selectCols = new ArrayList<>();
       List<String> groupCols = new ArrayList<>();
@@ -152,24 +127,26 @@ public class Death extends Criteria {
   }
   
   @Override
-  public String embedWrapCriteriaQuery(String query, List<String> selectColsPE) {
+  public String embedWrapCriteriaQuery(String query, List<String> selectColsPE, BuilderOptions options) {
       ArrayList<String> selectCols = new ArrayList<>();
       
-      if (occurrenceStartDate != null) {
-          selectCols.add(", Q.death_date");
-          selectColsPE.add(", PE.death_date");
+      if(!options.isPrimaryCriteria()){
+        if (occurrenceStartDate != null) {
+            selectCols.add(", Q.death_date");
+            selectColsPE.add(", PE.death_date");
+        }
+        
+        if (deathType != null && deathType.length > 0) {
+            selectCols.add(", Q.death_type_concept_id");
+            selectColsPE.add(", PE.death_type_concept_id");
+        }
+        
+        if (deathSourceConcept != null) {
+            selectCols.add(", Q.cause_concept_id");
+            selectColsPE.add(", PE.cause_concept_id");
+        }
       }
-      
-      if (deathType != null && deathType.length > 0) {
-          selectCols.add(", Q.death_type_concept_id");
-          selectColsPE.add(", PE.death_type_concept_id");
-      }
-      
-      if (deathSourceConcept != null) {
-          selectCols.add(", Q.cause_concept_id");
-          selectColsPE.add(", PE.cause_concept_id");
-      }
-      
+
       query = StringUtils.replace(query, "@QAdditionalColumnsInclusionN", StringUtils.join(selectCols, ""));
       return query;
   }

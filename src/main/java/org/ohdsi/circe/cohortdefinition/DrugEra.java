@@ -91,26 +91,6 @@ public class DrugEra extends Criteria {
   }
   
   @Override
-  public String embedCriteriaGroup(String query) {
-      ArrayList<String> selectColsCQ = new ArrayList<>();
-      ArrayList<String> selectColsG = new ArrayList<>();
-      
-      if (occurrenceCount != null) {
-          selectColsCQ.add(", CQ.drug_exposure_count");
-          selectColsG.add(", G.drug_exposure_count");
-      }
-      
-      if (gapDays != null) {
-          selectColsCQ.add(", CQ.gap_days");
-          selectColsG.add(", G.gap_days");
-      }
-      
-      query = StringUtils.replace(query, "@e.additonColumns", StringUtils.join(selectColsCQ, ""));
-      query = StringUtils.replace(query, "@additonColumnsGroup", StringUtils.join(selectColsG, ""));
-      return query;
-  }
-  
-  @Override
   public String embedWindowedCriteriaQuery(String query, Map<String, ColumnFieldData> mapDistinctField) {
       List<String> selectCols = new ArrayList<>();
       List<String> groupCols = new ArrayList<>();
@@ -149,17 +129,19 @@ public class DrugEra extends Criteria {
   }
   
   @Override
-  public String embedWrapCriteriaQuery(String query, List<String> selectColsPE) {
+  public String embedWrapCriteriaQuery(String query, List<String> selectColsPE, BuilderOptions options) {
       ArrayList<String> selectCols = new ArrayList<>();
       
-      if (occurrenceCount != null) {
-          selectCols.add(", Q.drug_exposure_count");
-          selectColsPE.add(", PE.drug_exposure_count");
-      }
-      
-      if (gapDays != null) {
-          selectCols.add(", Q.gap_days");
-          selectColsPE.add(", PE.gap_days");
+      if(!options.isPrimaryCriteria()){
+        if (occurrenceCount != null) {
+            selectCols.add(", Q.drug_exposure_count");
+            selectColsPE.add(", PE.drug_exposure_count");
+        }
+        
+        if (gapDays != null) {
+            selectCols.add(", Q.gap_days");
+            selectColsPE.add(", PE.gap_days");
+        }
       }
       
       query = StringUtils.replace(query, "@QAdditionalColumnsInclusionN", StringUtils.join(selectCols, ""));

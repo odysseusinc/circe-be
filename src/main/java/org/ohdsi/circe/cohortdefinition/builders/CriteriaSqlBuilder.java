@@ -32,19 +32,6 @@ public abstract class CriteriaSqlBuilder<T extends Criteria> {
     
     query = embedAdditionalColumns(query, criteria, options);
 
-    if (options != null) {
-      List<CriteriaColumn> filteredColumns = options.additionalColumns.stream()
-              .filter((column) -> !this.getDefaultColumns().contains(column))
-              .collect(Collectors.toList());
-      if (filteredColumns.size() > 0) {
-        query = StringUtils.replace(query, "@additionalColumns", ", " + this.getAdditionalColumns(filteredColumns));
-      } else {
-        query = StringUtils.replace(query, "@additionalColumns", "");
-      }
-    } else {
-      query = StringUtils.replace(query, "@additionalColumns", "");
-    }
-
     return query;
   }
   

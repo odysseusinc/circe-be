@@ -78,31 +78,31 @@ public class DeviceExposureSqlBuilder<T extends DeviceExposure> extends Criteria
       query = StringUtils.replace(query, "@ordinalExpression", "");
     }
 
-    if (options != null && options.isRetainCohortCovariates()) {  
+    if (options != null && options.isRetainCohortCovariates()) {
       List<String> cColumns = new ArrayList<>();
         cColumns.add("C.concept_id");
-        
-        if (criteria.deviceType != null && criteria.deviceType.length > 0) {
-            cColumns.add("C.device_type_concept_id");
+        if(!options.isPrimaryCriteria()){
+          if (criteria.deviceType != null && criteria.deviceType.length > 0) {
+              cColumns.add("C.device_type_concept_id");
+          }
+          
+          if (criteria.quantity != null) {
+              cColumns.add("C.quantity");
+          }
+          
+          if (criteria.uniqueDeviceId != null) {
+              cColumns.add("C.unique_device_id");
+          }
+          
+          if (criteria.deviceSourceConcept != null) {
+              cColumns.add("C.device_source_concept_id");
+          }
+          
+          // providerSpecialty
+          if (criteria.providerSpecialty != null && criteria.providerSpecialty.length > 0) {
+              cColumns.add("C.provider_id");
+          }
         }
-        
-        if (criteria.quantity != null) {
-            cColumns.add("C.quantity");
-        }
-        
-        if (criteria.uniqueDeviceId != null) {
-            cColumns.add("C.unique_device_id");
-        }
-        
-        if (criteria.deviceSourceConcept != null) {
-            cColumns.add("C.device_source_concept_id");
-        }
-        
-        // providerSpecialty
-        if (criteria.providerSpecialty != null && criteria.providerSpecialty.length > 0) {
-            cColumns.add("C.provider_id");
-        }
-        
         query = StringUtils.replace(query, "@c.additionalColumns", ", " + StringUtils.join(cColumns, ","));
     } else {
         query = StringUtils.replace(query, "@c.additionalColumns", "");
