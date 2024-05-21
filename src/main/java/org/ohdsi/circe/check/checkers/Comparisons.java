@@ -109,7 +109,7 @@ public class Comparisons {
 
   public static int compareTo(ObservationFilter filter, Window window) {
     int range1, range2Start, range2End;
-    if (Objects.nonNull(window.start) && (Objects.nonNull(window.start.days) || IntervalUnit.DAY.getName().equals(window.start.timeUnit))) {
+    if (Objects.nonNull(window.start) && (Objects.nonNull(window.start.days) || (IntervalUnit.DAY.getName().equals(window.start.timeUnit) && Objects.nonNull(window.start.days)))) {
       range1 = filter.postDays + filter.priorDays;
       range2Start = window.start.coeff * window.start.days;
       range2End = Objects.nonNull(window.end) && Objects.nonNull(window.end.days) ? window.end.coeff * window.end.days : 0;
