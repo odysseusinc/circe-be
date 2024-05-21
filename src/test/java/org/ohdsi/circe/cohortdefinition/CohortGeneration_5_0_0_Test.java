@@ -156,7 +156,7 @@ public class CohortGeneration_5_0_0_Test extends AbstractDatabaseTest {
       // execute on database, expect no errors
       jdbcTemplate.batchUpdate(SqlSplit.splitSql(cohortSql));
   }
-
+  
   @Test
   public void allCriteriaTestWithTimeUnitInterval() throws SQLException {
 
