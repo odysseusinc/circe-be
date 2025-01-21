@@ -169,10 +169,10 @@ public class CohortExpressionQueryBuilder implements IGetCriteriaSqlDispatcher, 
     String groupQuery = this.getCriteriaGroupQuery(group, String.format("(%s)", eventQuery), options.isRetainCohortCovariates());
     groupQuery = StringUtils.replace(groupQuery, "@indexId", "" + 0);
     String wrappedQuery = String.format(
-            "select PE.person_id, PE.event_id" +
+            "select PE.person_id, PE.event_id, PE.start_date, PE.end_date, PE.visit_occurrence_id, PE.sort_date " +
               "@concept_id" +
-              "@PEAdditionalColumnsInclusionN" +
-              ", PE.start_date, PE.end_date, PE.visit_occurrence_id, PE.sort_date FROM (\n%s\n) PE\nJOIN (\n%s) AC on AC.person_id = pe.person_id and AC.event_id = pe.event_id\n",
+              "@PEAdditionalColumnsInclusionN " +
+              "FROM (\n%s\n) PE\nJOIN (\n%s) AC on AC.person_id = pe.person_id and AC.event_id = pe.event_id\n",
             query, groupQuery);
     // Add the fields concept_id, value_as_number, value_as_string, value_as_concept_id, unit_concept_id if the save covariates checkbox is checked
     if (options.isRetainCohortCovariates()) {
