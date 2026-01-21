@@ -33,6 +33,7 @@ import org.ohdsi.circe.vocabulary.ConceptSetExpressionQueryBuilder;
 import static org.ohdsi.circe.cohortdefinition.builders.BuilderUtils.buildDateRangeClause;
 import static org.ohdsi.circe.cohortdefinition.builders.BuilderUtils.buildNumericRangeClause;
 import static org.ohdsi.circe.cohortdefinition.builders.BuilderUtils.dateStringToSql;
+import static org.ohdsi.circe.cohortdefinition.builders.BuilderUtils.getCodesetInExpression;
 import static org.ohdsi.circe.cohortdefinition.builders.BuilderUtils.getConceptIdsFromConcepts;
 
 /**
@@ -486,19 +487,29 @@ public class CohortExpressionQueryBuilder implements IGetCriteriaSqlDispatcher, 
       whereClauses.add(String.format("P.gender_concept_id in (%s)", StringUtils.join(getConceptIdsFromConcepts(criteria.gender), ",")));
     }
 
-    // Race
-    if (criteria.race != null && criteria.race.length > 0) {
-      whereClauses.add(String.format("P.race_concept_id in (%s)", StringUtils.join(getConceptIdsFromConcepts(criteria.race), ",")));
+    // genderCS
+    if (criteria.genderCS != null) {
+      whereClauses.add(getCodesetInExpression("P.gender_concept_id", criteria.genderCS));
     }
 
     // Race
     if (criteria.race != null && criteria.race.length > 0) {
       whereClauses.add(String.format("P.race_concept_id in (%s)", StringUtils.join(getConceptIdsFromConcepts(criteria.race), ",")));
+    }
+
+    // raceCS
+    if (criteria.raceCS != null) {
+      whereClauses.add(getCodesetInExpression("P.race_concept_id", criteria.raceCS));
     }
 
     // Ethnicity
     if (criteria.ethnicity != null && criteria.ethnicity.length > 0) {
       whereClauses.add(String.format("P.ethnicity_concept_id in (%s)", StringUtils.join(getConceptIdsFromConcepts(criteria.ethnicity), ",")));
+    }
+
+    //EthnicityCS
+    if (criteria.ethnicityCS != null) {
+      whereClauses.add(getCodesetInExpression("P.ethnicity_concept_id", criteria.ethnicityCS));
     }
 
     // occurrenceStartDate

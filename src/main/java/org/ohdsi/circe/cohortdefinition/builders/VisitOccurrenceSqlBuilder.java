@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.ohdsi.circe.cohortdefinition.DateAdjustment;
+import static org.ohdsi.circe.cohortdefinition.builders.BuilderUtils.getCodesetInExpression;
 
 public class VisitOccurrenceSqlBuilder<T extends VisitOccurrence> extends CriteriaSqlBuilder<T> {
 
@@ -72,17 +73,23 @@ public class VisitOccurrenceSqlBuilder<T extends VisitOccurrence> extends Criter
     ArrayList<String> selectCols = new ArrayList<>(DEFAULT_SELECT_COLUMNS);
 
     // visitType
-    if (criteria.visitType != null && criteria.visitType.length > 0) {
+    if ((criteria.visitType != null && criteria.visitType.length > 0) ||
+      criteria.visitTypeCS != null
+    ) {
       selectCols.add("vo.visit_type_concept_id");
     }
 
     // providerSpecialty
-    if (criteria.providerSpecialty != null && criteria.providerSpecialty.length > 0) {
+    if ((criteria.providerSpecialty != null && criteria.providerSpecialty.length > 0) ||
+      criteria.providerSpecialtyCS != null
+    ) {
       selectCols.add("vo.provider_id");
     }
 
     // placeOfService
-    if (criteria.placeOfService != null && criteria.placeOfService.length > 0) {
+    if ((criteria.placeOfService != null && criteria.placeOfService.length > 0) ||
+      criteria.placeOfServiceCS != null
+    ) {
       selectCols.add("vo.care_site_id");
     }
 
@@ -103,14 +110,22 @@ public class VisitOccurrenceSqlBuilder<T extends VisitOccurrence> extends Criter
 
     List<String> joinClauses = new ArrayList<>();
 
-    if (criteria.age != null || (criteria.gender != null && criteria.gender.length > 0)) // join to PERSON
+    if (criteria.age != null ||
+      (criteria.gender != null && criteria.gender.length > 0) ||
+      criteria.genderCS != null
+    ) // join to PERSON
     {
       joinClauses.add("JOIN @cdm_database_schema.PERSON P on C.person_id = P.person_id");
     }
-    if ((criteria.placeOfService != null && criteria.placeOfService.length > 0) || criteria.placeOfServiceLocation != null) {
+    if ((criteria.placeOfService != null && criteria.placeOfService.length > 0) ||
+      criteria.placeOfServiceCS != null ||
+      criteria.placeOfServiceLocation != null
+    ) {
       joinClauses.add("JOIN @cdm_database_schema.CARE_SITE CS on C.care_site_id = CS.care_site_id");
     }
-    if (criteria.providerSpecialty != null && criteria.providerSpecialty.length > 0) {
+    if ((criteria.providerSpecialty != null && criteria.providerSpecialty.length > 0) ||
+      criteria.providerSpecialtyCS != null
+    ) {
       joinClauses.add("LEFT JOIN @cdm_database_schema.PROVIDER PR on C.provider_id = PR.provider_id");
     }
 
@@ -142,6 +157,11 @@ public class VisitOccurrenceSqlBuilder<T extends VisitOccurrence> extends Criter
       whereClauses.add(String.format("C.visit_type_concept_id %s in (%s)", (criteria.visitTypeExclude ? "not" : ""), StringUtils.join(conceptIds, ",")));
     }
 
+    // conditionTypeCS
+    if (criteria.visitTypeCS != null) {
+      whereClauses.add(getCodesetInExpression("C.visit_type_concept_id", criteria.visitTypeCS));
+    }
+
     // visitLength
     if (criteria.visitLength != null) {
       whereClauses.add(BuilderUtils.buildNumericRangeClause("DATEDIFF(d,C.start_date, C.end_date)", criteria.visitLength));
@@ -157,14 +177,29 @@ public class VisitOccurrenceSqlBuilder<T extends VisitOccurrence> extends Criter
       whereClauses.add(String.format("P.gender_concept_id in (%s)", StringUtils.join(BuilderUtils.getConceptIdsFromConcepts(criteria.gender), ",")));
     }
 
+    // genderCS
+    if (criteria.genderCS != null) {
+      whereClauses.add(getCodesetInExpression("P.gender_concept_id", criteria.genderCS));
+    }
+
     // providerSpecialty
     if (criteria.providerSpecialty != null && criteria.providerSpecialty.length > 0) {
       whereClauses.add(String.format("PR.specialty_concept_id in (%s)", StringUtils.join(BuilderUtils.getConceptIdsFromConcepts(criteria.providerSpecialty), ",")));
     }
 
+    // providerSpecialtyCS
+    if (criteria.providerSpecialtyCS != null) {
+      whereClauses.add(getCodesetInExpression("PR.specialty_concept_id", criteria.providerSpecialtyCS));
+    }
+
     // placeOfService
     if (criteria.placeOfService != null && criteria.placeOfService.length > 0) {
       whereClauses.add(String.format("CS.place_of_service_concept_id in (%s)", StringUtils.join(BuilderUtils.getConceptIdsFromConcepts(criteria.placeOfService), ",")));
+    }
+
+    // placeOfServiceCS
+    if (criteria.placeOfServiceCS != null) {
+      whereClauses.add(getCodesetInExpression("CS.place_of_service_concept_id", criteria.placeOfServiceCS));
     }
 
     return whereClauses;

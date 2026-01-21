@@ -13,6 +13,7 @@ import org.ohdsi.circe.cohortdefinition.DateAdjustment;
 
 import static org.ohdsi.circe.cohortdefinition.builders.BuilderUtils.buildDateRangeClause;
 import static org.ohdsi.circe.cohortdefinition.builders.BuilderUtils.buildNumericRangeClause;
+import static org.ohdsi.circe.cohortdefinition.builders.BuilderUtils.getCodesetInExpression;
 import static org.ohdsi.circe.cohortdefinition.builders.BuilderUtils.getCodesetJoinExpression;
 import static org.ohdsi.circe.cohortdefinition.builders.BuilderUtils.getConceptIdsFromConcepts;
 
@@ -88,27 +89,37 @@ public class MeasurementSqlBuilder<T extends Measurement> extends CriteriaSqlBui
     ArrayList<String> selectCols = new ArrayList<>(DEFAULT_SELECT_COLUMNS);
 
     // measurementType
-    if (criteria.measurementType != null && criteria.measurementType.length > 0) {
+    if ((criteria.measurementType != null && criteria.measurementType.length > 0) ||
+      criteria.measurementTypeCS != null
+    ) {
       selectCols.add("m.measurement_type_concept_id");
     }
 
     // operator
-    if (criteria.operator != null && criteria.operator.length > 0) {
+    if ((criteria.operator != null && criteria.operator.length > 0) ||
+      criteria.operatorCS != null
+    ) {
       selectCols.add("m.operator_concept_id");
     }
 
     // valueAsConcept
-    if (criteria.valueAsConcept != null && criteria.valueAsConcept.length > 0) {
+    if ((criteria.valueAsConcept != null && criteria.valueAsConcept.length > 0) ||
+      criteria.valueAsConceptCS != null
+    ) {
       selectCols.add("m.value_as_concept_id");
     }
 
     // unit
-    if (criteria.unit != null && criteria.unit.length > 0) {
+    if ((criteria.unit != null && criteria.unit.length > 0) ||
+      criteria.unitCS != null
+    ) {
       selectCols.add("m.unit_concept_id");
     }
 
     // providerSpecialty
-    if (criteria.providerSpecialty != null && criteria.providerSpecialty.length > 0) {
+    if ((criteria.providerSpecialty != null && criteria.providerSpecialty.length > 0) ||
+      criteria.providerSpecialtyCS != null
+    ) {
       selectCols.add("m.provider_id");
     }
 
@@ -129,13 +140,20 @@ public class MeasurementSqlBuilder<T extends Measurement> extends CriteriaSqlBui
     List<String> joinClauses = new ArrayList<>();
 
     // join to PERSON
-    if (criteria.age != null || (criteria.gender != null && criteria.gender.length > 0)) {
+    if (criteria.age != null || 
+      (criteria.gender != null && criteria.gender.length > 0) ||
+      criteria.genderCS != null
+    ) {
       joinClauses.add("JOIN @cdm_database_schema.PERSON P on C.person_id = P.person_id");
     }
-    if (criteria.visitType != null && criteria.visitType.length > 0) {
+    if ((criteria.visitType != null && criteria.visitType.length > 0) ||
+      criteria.visitTypeCS != null
+    ) {
       joinClauses.add("JOIN @cdm_database_schema.VISIT_OCCURRENCE V on C.visit_occurrence_id = V.visit_occurrence_id and C.person_id = V.person_id");
     }
-    if (criteria.providerSpecialty != null && criteria.providerSpecialty.length > 0) {
+    if ((criteria.providerSpecialty != null && criteria.providerSpecialty.length > 0) ||
+      criteria.providerSpecialtyCS != null
+    ) {
       joinClauses.add("LEFT JOIN @cdm_database_schema.PROVIDER PR on C.provider_id = PR.provider_id");
     }
 
@@ -158,10 +176,20 @@ public class MeasurementSqlBuilder<T extends Measurement> extends CriteriaSqlBui
       whereClauses.add(String.format("C.measurement_type_concept_id %s in (%s)", (criteria.measurementTypeExclude ? "not" : ""), StringUtils.join(conceptIds, ",")));
     }
 
+    // measurementTypeCS
+    if (criteria.measurementTypeCS != null) {
+      whereClauses.add(getCodesetInExpression("C.measurement_type_concept_id", criteria.measurementTypeCS));
+    }
+
     // operator
     if (criteria.operator != null && criteria.operator.length > 0) {
       ArrayList<Long> conceptIds = getConceptIdsFromConcepts(criteria.operator);
       whereClauses.add(String.format("C.operator_concept_id in (%s)", StringUtils.join(conceptIds, ",")));
+    }
+
+    // operatorCS
+    if (criteria.operatorCS != null) {
+      whereClauses.add(getCodesetInExpression("C.operator_concept_id", criteria.operatorCS));
     }
 
     // valueAsNumber
@@ -175,12 +203,22 @@ public class MeasurementSqlBuilder<T extends Measurement> extends CriteriaSqlBui
       whereClauses.add(String.format("C.value_as_concept_id in (%s)", StringUtils.join(conceptIds, ",")));
     }
 
+    // valueAsConceptCS
+    if (criteria.valueAsConceptCS != null) {
+      whereClauses.add(getCodesetInExpression("C.value_as_concept_id", criteria.valueAsConceptCS));
+    }
+    
     // unit
     if (criteria.unit != null && criteria.unit.length > 0) {
       ArrayList<Long> conceptIds = getConceptIdsFromConcepts(criteria.unit);
       whereClauses.add(String.format("C.unit_concept_id in (%s)", StringUtils.join(conceptIds, ",")));
     }
 
+    // unitCS
+    if (criteria.unitCS != null) {
+      whereClauses.add(getCodesetInExpression("C.unit_concept_id", criteria.unitCS));
+    }
+    
     // rangeLow
     if (criteria.rangeLow != null) {
       whereClauses.add(buildNumericRangeClause("C.range_low", criteria.rangeLow, ".4f"));
@@ -216,14 +254,29 @@ public class MeasurementSqlBuilder<T extends Measurement> extends CriteriaSqlBui
       whereClauses.add(String.format("P.gender_concept_id in (%s)", StringUtils.join(getConceptIdsFromConcepts(criteria.gender), ",")));
     }
 
+    // genderCS
+    if (criteria.genderCS != null) {
+      whereClauses.add(getCodesetInExpression("P.gender_concept_id", criteria.genderCS));
+    }
+
     // providerSpecialty
     if (criteria.providerSpecialty != null && criteria.providerSpecialty.length > 0) {
       whereClauses.add(String.format("PR.specialty_concept_id in (%s)", StringUtils.join(getConceptIdsFromConcepts(criteria.providerSpecialty), ",")));
     }
 
+    // providerSpecialtyCS
+    if (criteria.providerSpecialtyCS != null) {
+      whereClauses.add(getCodesetInExpression("PR.specialty_concept_id", criteria.providerSpecialtyCS));
+    }
+
     // visitType
     if (criteria.visitType != null && criteria.visitType.length > 0) {
       whereClauses.add(String.format("V.visit_concept_id in (%s)", StringUtils.join(getConceptIdsFromConcepts(criteria.visitType), ",")));
+    }
+
+    // visitTypeCS
+    if (criteria.visitTypeCS != null) {
+      whereClauses.add(getCodesetInExpression("V.visit_concept_id", criteria.visitTypeCS));
     }
 
     return whereClauses;
