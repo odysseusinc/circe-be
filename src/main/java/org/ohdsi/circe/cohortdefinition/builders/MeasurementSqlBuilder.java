@@ -1,5 +1,6 @@
 package org.ohdsi.circe.cohortdefinition.builders;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.ohdsi.circe.cohortdefinition.Measurement;
 import org.ohdsi.circe.helper.ResourceHelper;
@@ -97,8 +98,8 @@ public class MeasurementSqlBuilder<T extends Measurement> extends CriteriaSqlBui
       selectCols.add("m.operator_concept_id");
     }
 
-    // valueAsConcept
-    if (criteria.valueAsConcept != null && criteria.valueAsConcept.length > 0) {
+    // valueAsConcept or abnormal
+    if (ArrayUtils.isNotEmpty(criteria.valueAsConcept) || Boolean.TRUE.equals(criteria.abnormal)) {
       selectCols.add("m.value_as_concept_id");
     }
 

@@ -27,6 +27,8 @@ import org.dbunit.dataset.SortedTable;
 import org.dbunit.operation.DatabaseOperation;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import org.ohdsi.circe.AbstractDatabaseTest;
 import org.ohdsi.circe.cohortdefinition.ConditionEra;
 import org.ohdsi.circe.cohortdefinition.ConditionOccurrence;
@@ -680,5 +682,30 @@ public class CriteriaQuery_5_0_0_Test extends AbstractDatabaseTest {
 
     // Assert actual database table match expected table
     Assertion.assertEquals(expectedDataSet, actualDataSet);
+  }
+
+  @Test
+  public void testMeasurementAbnormal() throws Exception {
+    final IDatabaseConnection dbUnitCon = getConnection();
+    DatabaseOperation.CLEAN_INSERT.execute(dbUnitCon, DataSetFactory.createDataSet(new String[]{ "/datasets/vocabulary.json", "/criteria/codesets.json", "/criteria/measurementAbnormal_PREP.json"}));
+
+    Measurement criteria = new Measurement();
+    criteria.codesetId = 1;
+    criteria.abnormal = true;
+
+    String query = renderQuery(new MeasurementSqlBuilder<>().getCriteriaSql(criteria));
+
+    assertThat(query, containsString("m.value_as_concept_id"));
+    assertThat(query, containsString("C.value_as_number < C.range_low"));
+    assertThat(query, containsString("C.value_as_number > C.range_high"));
+    assertThat(query, containsString("C.value_as_concept_id in (4155142, 4155143)"));
+
+    // Verify the query executes without error and returns only abnormal measurements
+    ITable actual = new SortedTable(
+      dbUnitCon.createQueryTable("measurement.abnormal", query),
+      new String[]{"person_id", "start_date"}
+    );
+    IDataSet expected = DataSetFactory.createDataSet(new String[]{"/criteria/measurementAbnormal_VERIFY.json"});
+    Assertion.assertEquals(expected, new CompositeDataSet(new ITable[]{actual}));
   }
 }
