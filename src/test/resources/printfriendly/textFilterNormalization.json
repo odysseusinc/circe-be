@@ -1,0 +1,51 @@
+{
+  "PrimaryCriteria": {
+    "CriteriaList": [
+      {
+        "Observation": {
+          "ValueAsString": {
+            "Op": "STARTS_WITH",
+            "Text": "start_text"
+          }
+        }
+      },
+      {
+        "Observation": {
+          "ValueAsString": {
+            "Op": "!CONTAINS",
+            "Text": "not_contain_text"
+          }
+        }
+      },
+      {
+        "Observation": {
+          "ValueAsString": {
+            "Op": "ENDING_WITH",
+            "Text": "end_text"
+          }
+        }
+      }
+    ],
+    "ObservationWindow": {
+      "PriorDays": 0,
+      "PostDays": 0
+    },
+    "PrimaryCriteriaLimit": {
+      "Type": "All"
+    }
+  },
+  "ConceptSets": [],
+  "QualifiedLimit": {
+    "Type": "First"
+  },
+  "ExpressionLimit": {
+    "Type": "First"
+  },
+  "InclusionRules": [],
+  "CensoringCriteria": [],
+  "CollapseSettings": {
+    "CollapseType": "ERA",
+    "EraPad": 0
+  },
+  "CensorWindow": {}
+}

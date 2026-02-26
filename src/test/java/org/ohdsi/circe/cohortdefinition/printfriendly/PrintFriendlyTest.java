@@ -7,6 +7,8 @@ import java.util.regex.Pattern;
 import org.commonmark.node.*;
 import org.commonmark.parser.Parser;
 import org.commonmark.renderer.html.HtmlRenderer;
+
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.stringContainsInOrder;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.not;
@@ -18,6 +20,11 @@ import org.junit.rules.ExpectedException;
 import org.ohdsi.analysis.Utils;
 import org.ohdsi.circe.cohortdefinition.CohortExpression;
 import org.ohdsi.circe.cohortdefinition.ConceptSet;
+import org.ohdsi.circe.cohortdefinition.Criteria;
+import org.ohdsi.circe.cohortdefinition.Observation;
+import org.ohdsi.circe.cohortdefinition.ObservationFilter;
+import org.ohdsi.circe.cohortdefinition.PrimaryCriteria;
+import org.ohdsi.circe.cohortdefinition.TextFilter;
 import org.ohdsi.circe.helper.ResourceHelper;
 
 public class PrintFriendlyTest {
@@ -670,5 +677,47 @@ public class PrintFriendlyTest {
             "1. condition occurrences of 'Concept Set 1', a provider specialty that is: [none specified]; a visit occurrence that is: [none specified]."
     ));
     
+  }
+
+  private CohortExpression createBaseExpression() {
+    CohortExpression expression = new CohortExpression();
+    expression.primaryCriteria = new PrimaryCriteria();
+    expression.primaryCriteria.observationWindow = new ObservationFilter();
+    expression.conceptSets = new ConceptSet[0];
+    return expression;
+  }
+  @Test
+  public void shouldNormalizeTextFilterOpStartsWith() {
+    CohortExpression expression = createBaseExpression();
+
+    Observation observation1 = new Observation();
+    TextFilter textFilter1 = new TextFilter();
+    textFilter1.op = "STARTS_WITH";
+    textFilter1.text = "test_value";
+    observation1.valueAsString = textFilter1;
+
+    Observation observation2 = new Observation();
+    TextFilter textFilter2 = new TextFilter();
+    textFilter2.op = "startsWith";
+    textFilter2.text = "test_value2";
+    observation2.valueAsString = textFilter2;
+
+    expression.primaryCriteria.criteriaList = new Criteria[] { observation1, observation2 };
+
+    String markdown = pf.renderCohort(expression);
+
+    assertThat(markdown, containsString("starting with \"test_value\""));
+    assertThat(markdown, containsString("starting with \"test_value2\""));
+  }
+
+  @Test
+  public void shouldNormalizeTextFilterOpsFromJson() {
+    CohortExpression expression = CohortExpression.fromJson(ResourceHelper.GetResourceAsString("/printfriendly/textFilterNormalization.json"));
+    String markdown = pf.renderCohort(expression);
+    assertThat(markdown, stringContainsInOrder(
+      "starting with \"start_text\"",
+      "not containing \"not_contain_text\"",
+      "ending with \"end_text\""
+    ));
   }
 }

@@ -54,7 +54,41 @@ item?counter gt 1><#if item?counter == list?size> or <#else>, </#if></#if>${item
   {"id": '!endsWith',"name": 'not ending with'}
 ]/>
 
-<#macro TextFilter filter>${utils.optionName(textFilterOptions, filter.op)} "${filter.text!""}"</#macro>
+<#function normalizeTextFilterOp op>
+  <#if !op?has_content>
+    <#return op>
+  </#if>
+  <#switch op>
+    <#case "startsWith">
+    <#case "STARTS_WITH">
+    <#case "STARTING_WITH">
+      <#return "startsWith">
+    <#case "contains">
+    <#case "CONTAINS">
+    <#case "CONTAINING">
+      <#return "contains">
+    <#case "endsWith">
+    <#case "ENDS_WITH">
+    <#case "ENDING_WITH">
+      <#return "endsWith">
+    <#case "!startsWith">
+    <#case "!STARTS_WITH">
+    <#case "!STARTING_WITH">
+      <#return "!startsWith">
+    <#case "!contains">
+    <#case "!CONTAINS">
+    <#case "!CONTAINING">
+      <#return "!contains">
+    <#case "!endsWith">
+    <#case "!ENDS_WITH">
+    <#case "!ENDING_WITH">
+      <#return "!endsWith">
+    <#default>
+      <#return op>
+  </#switch>
+</#function>
+
+<#macro TextFilter filter>${utils.optionName(textFilterOptions, normalizeTextFilterOp(filter.op))} "${filter.text!""}"</#macro>
 
 <#-- Limits -->
 <#assign resultLimitOptions = [
@@ -98,7 +132,7 @@ item?counter gt 1><#if item?counter == list?size> or <#else>, </#if></#if>${item
 
 <#-- User Defined Period -->
 
-<#macro UserDefinedPeriod p><#if 
+<#macro UserDefinedPeriod p><#if
 p.startDate?has_content>a user defiend start date of ${utils.formatDate(p.startDate)}<#if p.endDate?has_content> and</#if></#if><#if
 p.endDate?has_content><#if !p.startDate?has_content>a user defined</#if> end date of ${utils.formatDate(p.endDate)}</#if></#macro>
 
@@ -106,7 +140,7 @@ p.endDate?has_content><#if !p.startDate?has_content>a user defined</#if> end dat
 
 <#function toDatePart dateType><#if dateType == "START_DATE"><#return "start date"><#else><#return "end date"></#if></#function>
 
-<#macro DateAdjustment da><#if 
+<#macro DateAdjustment da><#if
 da?has_content>starting ${(da.startOffset != 0)?then((da.startOffset?abs + " days " + (da.startOffset < 0)?then("before","after")), "on")}${(da.startWith != da.endWith)?then(" the event ${toDatePart(da.startWith)}","")}<#--
 --> and ending ${(da.endOffset != 0)?then((da.endOffset?abs + " days " + (da.endOffset < 0)?then("before","after")), "on")} the event ${toDatePart(da.endWith)}</#if></#macro>
 
