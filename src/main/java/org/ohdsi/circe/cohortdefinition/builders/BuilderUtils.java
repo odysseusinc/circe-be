@@ -1,4 +1,4 @@
-package org.ohdsi.circe.cohortdefinition.builders;
+  package org.ohdsi.circe.cohortdefinition.builders;
 
 import org.apache.commons.lang3.StringUtils;
 import org.ohdsi.circe.cohortdefinition.DateRange;
@@ -20,10 +20,10 @@ public abstract class BuilderUtils {
   private final static String CODESET_JOIN_TEMPLATE = "JOIN #Codesets %s on (%s = %s.concept_id and %s.codeset_id = %d)";
   private final static String CODESET_IN_TEMPLATE = "%s %s in (select concept_id from #Codesets where codeset_id = %d)";
   private final static String CODESET_NULL_TEMPLATE = "%s is %s null";
-  
+
   private final static String DATE_ADJUSTMENT_TEMPLATE = ResourceHelper.GetResourceAsString("/resources/cohortdefinition/sql/dateAdjustment.sql");
   ;
-    private final static String STANARD_ALIAS = "cs";
+  private final static String STANARD_ALIAS = "cs";
   private final static String NON_STANARD_ALIAS = "cns";
 
   public static String getDateAdjustmentExpression(DateAdjustment dateAdjustment, String startColumn, String endColumn) {
@@ -104,11 +104,11 @@ public abstract class BuilderUtils {
     if (range.op.endsWith("bt")) // range with a 'between' op
     {
       clause = String.format("%s(%s >= %s and %s <= %s)",
-              range.op.startsWith("!") ? "not " : "",
-              sqlExpression,
-              dateStringToSql(range.value),
-              sqlExpression,
-              dateStringToSql(range.extent));
+        range.op.startsWith("!") ? "not " : "",
+        sqlExpression,
+        dateStringToSql(range.value),
+        sqlExpression,
+        dateStringToSql(range.extent));
     } else // single value range (less than/eq/greater than, etc)
     {
       clause = String.format("%s %s %s", sqlExpression, getOperator(range), dateStringToSql(range.value));
@@ -121,11 +121,11 @@ public abstract class BuilderUtils {
     String clause;
     if (range.op.endsWith("bt")) {
       clause = String.format("%s(%s >= %s and %s <= %s)",
-              range.op.startsWith("!") ? "not " : "",
-              sqlExpression,
-              formatDouble(range.value.doubleValue(), format),
-              sqlExpression,
-              formatDouble(range.extent.doubleValue(), format));
+        range.op.startsWith("!") ? "not " : "",
+        sqlExpression,
+        formatDouble(range.value.doubleValue(), format),
+        sqlExpression,
+        formatDouble(range.extent.doubleValue(), format));
     } else {
       clause = String.format("%s %s %s", sqlExpression, getOperator(range), formatDouble(range.value.doubleValue(), format));
     }
@@ -138,11 +138,11 @@ public abstract class BuilderUtils {
     String clause;
     if (range.op.endsWith("bt")) {
       clause = String.format("%s(%s >= %d and %s <= %d)",
-              range.op.startsWith("!") ? "not " : "",
-              sqlExpression,
-              range.value.intValue(),
-              sqlExpression,
-              range.extent.intValue());
+        range.op.startsWith("!") ? "not " : "",
+        sqlExpression,
+        range.value.intValue(),
+        sqlExpression,
+        range.extent.intValue());
     } else {
       clause = String.format("%s %s %d", sqlExpression, getOperator(range), range.value.intValue());
     }
@@ -160,9 +160,10 @@ public abstract class BuilderUtils {
 
   public static String buildTextFilterClause(String sqlExpression, TextFilter filter) {
 
-    String negation = filter.op.startsWith("!") ? "not" : "";
-    String prefix = filter.op.endsWith("endsWith") || filter.op.endsWith("contains") ? "%" : "";
-    String postfix = filter.op.endsWith("startsWith") || filter.op.endsWith("contains") ? "%" : "";
+    String op = filter.op != null ? filter.op.toUpperCase() : "";
+    String negation = op.startsWith("!") ? "not" : "";
+    String prefix = op.contains("END") || op.contains("CONTAIN") ? "%" : "";
+    String postfix = op.contains("START") || op.contains("CONTAIN") ? "%" : "";
 
     String value = escapeSqlParam(filter.text);
 
@@ -182,20 +183,20 @@ public abstract class BuilderUtils {
     String formatString = "%" + format;
     return String.format(Locale.US, formatString, d);
   }
-  
+
   public static <T> String splitInClause(String column, List<T> values, int groupSize) {
     // split the values into groupSize lists
     List<List<T>> groups = new ArrayList<>();
     for (int i = 0; i < values.size(); i += groupSize) {
-        int endIndex = Math.min(i + groupSize, values.size());
-        groups.add(values.subList(i, endIndex));
+      int endIndex = Math.min(i + groupSize, values.size());
+      groups.add(values.subList(i, endIndex));
     }
 
     /// create individual IN statements
     List<String> ins = groups.stream().map(group -> String.format("%s in (%s)", column, StringUtils.join(group, ","))).collect(Collectors.toList());
-    
+
     // return the set of INs grouped into ORs
     return String.format("(%s)", StringUtils.join(ins, " or "));
-    
+
   }
 }
