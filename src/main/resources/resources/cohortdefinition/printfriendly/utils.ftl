@@ -10,7 +10,8 @@ END Note!!!!
 -->
 <#assign _nullArg = {}>
 <#function optionName options id>
-  <#return (options?filter(op -> op.id == id))?first.name>
+  <#local matches = (options![])?filter(op -> op.id == id)>
+  <#if matches?has_content><#return matches?first.name><#else><#return "unknown(" + id + ")"></#if>
 </#function>
 
 <#macro indent level=0><#list 1..((level*4)) as x> </#list></#macro>
